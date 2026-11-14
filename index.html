@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Garimpo — Mineração de Ofertas</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/icon-192.png">
+<meta name="theme-color" content="#070b16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Garimpo">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -93,7 +101,23 @@ th{color:var(--mut);font-weight:500;font-size:12px}
 .x:hover{color:var(--bad)}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--line);padding:12px 16px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:9}
 .ok-t{color:var(--ok)}
-@media(max-width:760px){aside{display:none}main{padding:16px}}
+/* celular: menu vira barra fixa embaixo */
+@media(max-width:760px){
+  #app{display:block}
+  aside{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;z-index:8;flex-direction:row;justify-content:space-around;
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--line);gap:0}
+  aside .logo,aside .menu-t,aside .rod{display:none}
+  .nav{flex-direction:column;gap:2px;padding:6px 8px;font-size:11px;flex:1;text-align:center}
+  .nav b{display:none}
+  main{padding:16px 14px 90px}
+  h1{font-size:19px}
+  .filtros input[type=search]{min-width:0;width:100%;flex-basis:100%}
+  .filtros select{flex:1;min-width:45%}
+  .contagem{margin-left:0}
+  .grid{grid-template-columns:1fr}
+  .linha label{min-width:0;width:100%}
+  .box{padding:16px}
+}
 </style>
 </head>
 <body>
@@ -189,6 +213,21 @@ th{color:var(--mut);font-weight:500;font-size:12px}
       </div>
 
       <div class="box">
+        <h2>Notificações no celular <span id="push-st" class="pill"></span></h2>
+        <p class="sub" style="font-size:13px;margin:0 0 10px">Receba um aviso quando a mineração terminar. Ative em cada aparelho (celular e computador).</p>
+        <div class="linha">
+          <button class="btn" id="b-push">🔔 Ativar notificações neste aparelho</button>
+          <button class="btn sec" id="b-push-teste">Enviar teste</button>
+        </div>
+        <p class="sub" style="font-size:12px;margin:0" id="push-dica"></p>
+      </div>
+
+      <div class="box">
+        <h2>Conta</h2>
+        <button class="btn sec" id="sair2">Sair</button>
+      </div>
+
+      <div class="box">
         <h2>Token da Apify <span id="tk-st" class="pill"></span></h2>
         <div class="linha">
           <input id="c-token" type="password" placeholder="apify_api_..." style="flex:1">
@@ -280,7 +319,7 @@ function trocar(v) {
     feed(true);
   }
   if (v === 'palavras') listarPalavras();
-  if (v === 'config') carregarConfig();
+  if (v === 'config') { carregarConfig(); statusPush(); }
 }
 
 /* ---------- feed ---------- */
@@ -482,6 +521,51 @@ async function ultimaExec() {
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function dt(s) { return s ? new Date(s).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; }
 function toast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
+
+/* ---------- app instalável + notificações ---------- */
+const VAPID_PUBLICA = 'BHjNJ00quAfa4gkF2KVLKAi395mmI6f29lEYCDeVngDmq2f5Vu_7n8_jz7w2K3lUJSvFVn3mVbODsF1yNQc_0IQ';
+let swReg = null;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; statusPush(); }).catch(() => {});
+const ehIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const instalado = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+function b64ParaUint8(b64) {
+  const p = '='.repeat((4 - b64.length % 4) % 4), s = atob((b64 + p).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...s].map(c => c.charCodeAt(0)));
+}
+async function statusPush() {
+  const st = $('#push-st'); if (!st) return;
+  if (ehIOS && !instalado) {
+    st.textContent = 'instale primeiro'; st.className = 'pill falhou';
+    $('#push-dica').innerHTML = 'No iPhone: toque em <b>Compartilhar ⬆️ → Adicionar à Tela de Início</b>, abra o Garimpo pelo ícone e ative aqui.';
+    return;
+  }
+  if (!('PushManager' in window) || !swReg) { st.textContent = 'não suportado'; st.className = 'pill falhou'; return; }
+  const sub = await swReg.pushManager.getSubscription();
+  st.textContent = sub ? 'ativado' : 'desativado'; st.className = 'pill ' + (sub ? 'concluida' : 'falhou');
+  $('#push-dica').textContent = sub ? 'Este aparelho vai receber aviso quando a mineração terminar.' : '';
+}
+$('#b-push').onclick = async () => {
+  try {
+    if (!swReg) throw new Error('Abra pelo app instalado ou atualize a página');
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') throw new Error('Permissão de notificação negada');
+    const sub = (await swReg.pushManager.getSubscription()) ||
+      await swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ParaUint8(VAPID_PUBLICA) });
+    const j = sub.toJSON();
+    const { error } = await sb.from('mina_push').upsert({
+      endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
+      aparelho: (ehIOS ? 'iPhone' : /android/i.test(navigator.userAgent) ? 'Android' : 'Computador')
+    });
+    if (error) throw error;
+    toast('Notificações ativadas ✓'); statusPush();
+  } catch (e) { toast('Erro: ' + e.message); }
+};
+$('#b-push-teste').onclick = async () => {
+  try { const r = await fn('testar_push'); toast(r.enviados ? `Teste enviado pra ${r.enviados} aparelho(s)` : 'Nenhum aparelho ativado ainda'); }
+  catch (e) { toast('Erro: ' + e.message); }
+};
+$('#sair2').onclick = async () => { await sb.auth.signOut(); location.reload(); };
 
 iniciar();
 </script>
