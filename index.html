@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Garimpo — Mineração de Ofertas</title>
+<script>try{if(localStorage.getItem('garimpo-tema')==='claro')document.documentElement.dataset.tema='claro'}catch(e){}</script>
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="icon" href="/icon-192.png">
@@ -19,7 +20,17 @@
 :root{
   --bg:#070b16;--panel:#0d1424;--card:#111a2e;--line:#1d2942;--txt:#e6ebf5;--mut:#8592ad;
   --pri:#1f6bff;--pri2:#3b82ff;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;
+  --hover:rgba(255,255,255,.03);--sombra:rgba(0,0,0,.4);
 }
+/* modo claro */
+html[data-tema="claro"]{
+  --bg:#f4f6fb;--panel:#ffffff;--card:#ffffff;--line:#e2e7f0;--txt:#111827;--mut:#5b6478;
+  --pri:#1f6bff;--pri2:#1a5ae0;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;
+  --hover:rgba(0,0,0,.04);--sombra:rgba(15,23,42,.12);
+}
+html[data-tema="claro"] .card{box-shadow:0 1px 3px var(--sombra)}
+html[data-tema="claro"] .nav.on{background:rgba(31,107,255,.1)}
+.tema-btn{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;align-items:center;gap:8px;width:100%;justify-content:center;margin-bottom:10px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
 a{color:inherit;text-decoration:none}
@@ -80,7 +91,7 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}
 .c-acoes .btn{flex:1}
 .c-rod{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
 .c-rod a,.c-rod div{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 2px;font-size:11px;color:var(--mut);text-align:center}
-.c-rod a:hover{color:var(--txt);background:rgba(255,255,255,.03)}
+.c-rod a:hover{color:var(--txt);background:var(--hover)}
 .c-rod .ic{font-size:15px}
 .c-rod .novo{color:var(--ok)}
 .salvo{background:var(--ok)!important}
@@ -99,7 +110,7 @@ th{color:var(--mut);font-weight:500;font-size:12px}
 .pill.rodando{color:var(--warn)}.pill.concluida{color:var(--ok)}.pill.falhou{color:var(--bad)}
 .x{background:transparent;color:var(--mut);font-size:16px}
 .x:hover{color:var(--bad)}
-.toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--line);padding:12px 16px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:9}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--line);padding:12px 16px;border-radius:10px;box-shadow:0 10px 30px var(--sombra);z-index:9}
 .ok-t{color:var(--ok)}
 /* sem zoom: nem pinça, nem toque duplo, nem zoom ao tocar em campo */
 html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:none}
@@ -152,6 +163,7 @@ button,a,.nav,select{touch-action:manipulation;-webkit-user-select:none;user-sel
     <a class="nav" data-v="palavras">🔑 Palavras-chave</a>
     <a class="nav" data-v="config">⚙️ Configurações</a>
     <div class="rod">
+      <button class="tema-btn" onclick="alternarTema()"><span class="tema-ic">☀️</span><span class="tema-txt">Modo claro</span></button>
       <div id="ultima">—</div>
       <a href="#" id="sair" style="color:var(--mut);display:block;margin-top:8px">Sair</a>
     </div>
@@ -230,8 +242,11 @@ button,a,.nav,select{touch-action:manipulation;-webkit-user-select:none;user-sel
       </div>
 
       <div class="box">
-        <h2>Conta</h2>
-        <button class="btn sec" id="sair2">Sair</button>
+        <h2>Aparência e conta</h2>
+        <div class="linha">
+          <button class="btn sec" onclick="alternarTema()"><span class="tema-ic">☀️</span> <span class="tema-txt">Modo claro</span></button>
+          <button class="btn sec" id="sair2">Sair</button>
+        </div>
       </div>
 
       <div class="box">
@@ -528,6 +543,20 @@ async function ultimaExec() {
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function dt(s) { return s ? new Date(s).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; }
 function toast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
+
+/* ---------- modo claro / escuro ---------- */
+function aplicarTema(t) {
+  if (t === 'claro') document.documentElement.dataset.tema = 'claro'; else delete document.documentElement.dataset.tema;
+  document.querySelectorAll('.tema-ic').forEach(e => e.textContent = t === 'claro' ? '🌙' : '☀️');
+  document.querySelectorAll('.tema-txt').forEach(e => e.textContent = t === 'claro' ? 'Modo escuro' : 'Modo claro');
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'claro' ? '#f4f6fb' : '#070b16';
+}
+function alternarTema() {
+  const novo = document.documentElement.dataset.tema === 'claro' ? 'escuro' : 'claro';
+  try { localStorage.setItem('garimpo-tema', novo); } catch (_) {}
+  aplicarTema(novo);
+}
+aplicarTema(document.documentElement.dataset.tema === 'claro' ? 'claro' : 'escuro');
 
 /* ---------- bloqueia zoom de pinça no iPhone (Safari ignora o viewport) ---------- */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
