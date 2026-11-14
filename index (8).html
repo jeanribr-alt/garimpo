@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garimpo — Mineração de Ofertas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#070b16;--panel:#0d1424;--card:#111a2e;--line:#1d2942;--txt:#e6ebf5;--mut:#8592ad;
+  --pri:#1f6bff;--pri2:#3b82ff;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:0}
+input,select{font-family:inherit;font-size:14px;background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px 11px;outline:none}
+input:focus,select:focus{border-color:var(--pri)}
+.btn{background:var(--pri);color:#fff;border-radius:8px;padding:9px 14px;font-weight:600;display:inline-flex;gap:6px;align-items:center;justify-content:center}
+.btn:hover{background:var(--pri2)}
+.btn.sec{background:transparent;border:1px solid var(--line);color:var(--txt)}
+.btn.sec:hover{border-color:var(--mut)}
+.btn.sm{padding:6px 10px;font-size:13px}
+.hide{display:none!important}
+
+/* login */
+#login{min-height:100vh;display:grid;place-items:center}
+#login form{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:32px;width:340px;display:flex;flex-direction:column;gap:12px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:24px;letter-spacing:-.5px}
+.logo i{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#1f6bff,#00c2ff);display:grid;place-items:center;font-style:normal;font-size:18px}
+.erro{color:var(--bad);font-size:13px;min-height:16px}
+
+/* layout */
+#app{display:flex;min-height:100vh}
+aside{width:230px;background:var(--panel);border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px}
+aside .logo{margin:0 8px 22px}
+.menu-t{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:10px 10px 6px}
+.nav{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--mut);font-weight:500}
+.nav:hover{background:var(--card);color:var(--txt)}
+.nav.on{background:rgba(31,107,255,.12);color:var(--pri2)}
+.nav b{margin-left:auto;font-size:11px;background:var(--card);padding:2px 7px;border-radius:20px;color:var(--mut)}
+aside .rod{margin-top:auto;font-size:12px;color:var(--mut);padding:10px}
+main{flex:1;padding:26px 30px;min-width:0}
+h1{font-size:22px;font-weight:700;margin-bottom:4px}
+.sub{color:var(--mut);margin-bottom:18px}
+
+/* filtros */
+.filtros{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center}
+.filtros input[type=search]{min-width:240px;flex:1}
+.contagem{color:var(--mut);margin-left:auto;font-size:13px}
+
+/* grid de cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.c-top{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 10px;gap:8px}
+.c-qtd{font-size:12px;color:var(--mut);line-height:1.3}
+.c-qtd b{display:block;color:var(--pri2);font-size:15px}
+.c-up{color:var(--ok);font-size:11px;font-weight:700}
+.c-media{position:relative;background:#000;aspect-ratio:9/12;display:grid;place-items:center;overflow:hidden}
+.c-media img,.c-media video{width:100%;height:100%;object-fit:contain;background:#000}
+.c-media .play{position:absolute;width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;cursor:pointer}
+.c-media .play:after{content:"";border-left:18px solid #000;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:5px}
+.c-media .tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);font-size:11px;padding:3px 7px;border-radius:5px}
+.c-media .sem{color:var(--mut);font-size:12px;padding:20px;text-align:center}
+.c-pag{display:flex;align-items:center;gap:8px;padding:10px 12px 0;font-weight:600;font-size:13px}
+.c-pag img{width:22px;height:22px;border-radius:50%;background:var(--line)}
+.c-pag span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-txt{padding:6px 12px 10px;color:var(--mut);font-size:12px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:52px}
+.c-acoes{display:flex;gap:8px;padding:0 12px 12px}
+.c-acoes .btn{flex:1}
+.c-rod{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+.c-rod a,.c-rod div{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 2px;font-size:11px;color:var(--mut);text-align:center}
+.c-rod a:hover{color:var(--txt);background:rgba(255,255,255,.03)}
+.c-rod .ic{font-size:15px}
+.c-rod .novo{color:var(--ok)}
+.salvo{background:var(--ok)!important}
+.vazio{padding:60px 20px;text-align:center;color:var(--mut);border:1px dashed var(--line);border-radius:12px}
+.mais{display:flex;justify-content:center;margin:24px 0}
+
+/* paineis */
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:18px;max-width:900px}
+.box h2{font-size:15px;margin-bottom:12px}
+.linha{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.linha label{color:var(--mut);font-size:13px;min-width:220px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:500;font-size:12px}
+.pill{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--card)}
+.pill.rodando{color:var(--warn)}.pill.concluida{color:var(--ok)}.pill.falhou{color:var(--bad)}
+.x{background:transparent;color:var(--mut);font-size:16px}
+.x:hover{color:var(--bad)}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--line);padding:12px 16px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:9}
+.ok-t{color:var(--ok)}
+@media(max-width:760px){aside{display:none}main{padding:16px}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="hide">
+  <form id="f-login">
+    <div class="logo"><i>⛏</i>Garimpo</div>
+    <p class="sub" style="margin:0" id="l-sub">Entre na sua conta</p>
+    <input id="l-email" type="email" placeholder="E-mail" required>
+    <input id="l-senha" type="password" placeholder="Senha (mín. 6 caracteres)" minlength="6" required>
+    <button class="btn" type="submit" id="l-btn">Entrar</button>
+    <a href="#" id="l-troca" style="color:var(--mut);font-size:13px;text-align:center">Primeiro acesso? Criar senha</a>
+    <div class="erro" id="l-erro"></div>
+  </form>
+</div>
+
+<!-- APP -->
+<div id="app" class="hide">
+  <aside>
+    <div class="logo"><i>⛏</i>Garimpo</div>
+    <div class="menu-t">Mineração</div>
+    <a class="nav" data-v="ofertas">🔥 Ofertas <b id="n-ofertas">0</b></a>
+    <a class="nav" data-v="salvas">⭐ Salvas <b id="n-salvas">0</b></a>
+    <a class="nav" data-v="palavras">🔑 Palavras-chave</a>
+    <a class="nav" data-v="config">⚙️ Configurações</a>
+    <div class="rod">
+      <div id="ultima">—</div>
+      <a href="#" id="sair" style="color:var(--mut);display:block;margin-top:8px">Sair</a>
+    </div>
+  </aside>
+
+  <main>
+    <!-- OFERTAS / SALVAS -->
+    <section id="v-ofertas">
+      <h1 id="t-feed">Ofertas mineradas</h1>
+      <p class="sub" id="s-feed">Anúncios com 2+ ativos usando o mesmo criativo</p>
+      <div class="filtros">
+        <input type="search" id="f-busca" name="garimpo-busca" placeholder="Buscar página, texto ou link..." autocomplete="off" autocorrect="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')">
+        <select id="f-palavra"><option value="">Todas as palavras</option></select>
+        <select id="f-pais"><option value="">Todos os países</option></select>
+        <select id="f-midia"><option value="">Vídeo e imagem</option><option value="video">Só vídeo</option><option value="imagem">Só imagem</option></select>
+        <select id="f-periodo">
+          <option value="">Minerados: sempre</option>
+          <option value="1">Hoje</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="30">Últimos 30 dias</option>
+        </select>
+        <select id="f-ordem">
+          <option value="qtd">Mais anúncios</option>
+          <option value="novos">Mais novos (início)</option>
+          <option value="minerados">Minerados por último</option>
+        </select>
+        <span class="contagem" id="contagem"></span>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="mais"><button class="btn sec hide" id="b-mais">Carregar mais</button></div>
+    </section>
+
+    <!-- PALAVRAS -->
+    <section id="v-palavras" class="hide">
+      <h1>Palavras-chave</h1>
+      <p class="sub">O robô busca cada uma na Biblioteca de Anúncios todo dia às 6h</p>
+      <div class="box">
+        <form class="linha" id="f-add">
+          <input id="p-palavra" placeholder="Ex: energia solar, apostila, curso de..." style="flex:1;min-width:220px" required>
+          <select id="p-pais">
+            <option>BR</option><option>MX</option><option>CO</option><option>AR</option><option>CL</option>
+            <option>PE</option><option>EC</option><option>US</option><option>ES</option><option>PT</option><option>ALL</option>
+          </select>
+          <button class="btn">+ Adicionar</button>
+        </form>
+        <p class="sub" style="font-size:12px;margin:0">Dica: cole várias separadas por vírgula.</p>
+      </div>
+      <div class="box">
+        <table><thead><tr><th>Palavra</th><th>País</th><th>Ativa</th><th>Ofertas</th><th></th></tr></thead><tbody id="t-palavras"></tbody></table>
+      </div>
+    </section>
+
+    <!-- CONFIG -->
+    <section id="v-config" class="hide">
+      <h1>Configurações</h1>
+      <p class="sub">Robô de mineração</p>
+
+      <div class="box">
+        <h2>Mineração</h2>
+        <div class="linha">
+          <button class="btn" id="b-minerar">⛏ Minerar agora</button>
+          <span class="sub" style="margin:0" id="m-status"></span>
+        </div>
+        <p class="sub" style="font-size:12px;margin:0">Automático: todo dia às 6h. Os anúncios aparecem em alguns minutos depois que a busca termina.</p>
+      </div>
+
+      <div class="box">
+        <h2>Token da Apify <span id="tk-st" class="pill"></span></h2>
+        <div class="linha">
+          <input id="c-token" type="password" placeholder="apify_api_..." style="flex:1">
+          <button class="btn sec" id="b-token">Salvar token</button>
+        </div>
+        <p class="sub" style="font-size:12px;margin:0">Apify → Settings → API &amp; Integrations. Fica guardado só no servidor.</p>
+      </div>
+
+      <div class="box">
+        <h2>Filtros do robô</h2>
+        <div class="linha"><label>Mínimo de anúncios do mesmo criativo</label><input id="c-min" type="number" min="1" style="width:110px"></div>
+        <div class="linha"><label>Máximo de dias rodando (vazio = sem limite)</label><input id="c-dias" type="number" min="1" style="width:110px"></div>
+        <div class="linha"><label>Anúncios carregados por palavra (rolagem)</label><input id="c-lim" type="number" min="50" step="50" style="width:110px"></div>
+        <div class="linha"><label>URL modelo (uma busca sua já em "mais recentes")</label><input id="c-url" style="flex:1;min-width:300px" placeholder="https://www.facebook.com/ads/library/?..."></div>
+        <button class="btn" id="b-cfg">Salvar filtros</button>
+      </div>
+
+      <div class="box">
+        <h2>Últimas execuções</h2>
+        <table><thead><tr><th>Quando</th><th>Palavra</th><th>Status</th><th>Lidos</th><th>Novos</th><th>Atualizados</th></tr></thead><tbody id="t-exec"></tbody></table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const SUPA_URL = 'https://tizrdeeymaftrkyygtwd.supabase.co';
+const SUPA_KEY = 'sb_publishable_lO-p-wbPR6OtyXWZo16REg_WKk1xFUL';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+const $ = s => document.querySelector(s);
+const POR_PAG = 40;
+let view = 'ofertas', pagina = 0;
+
+/* ---------- auth ---------- */
+async function iniciar() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) entrar(); else $('#login').classList.remove('hide');
+}
+let criando = false;
+$('#l-troca').onclick = e => {
+  e.preventDefault(); criando = !criando;
+  $('#l-btn').textContent = criando ? 'Criar conta' : 'Entrar';
+  $('#l-sub').textContent = criando ? 'Crie sua senha de acesso' : 'Entre na sua conta';
+  $('#l-troca').textContent = criando ? 'Já tenho conta. Entrar' : 'Primeiro acesso? Criar senha';
+};
+$('#f-login').onsubmit = async e => {
+  e.preventDefault(); $('#l-erro').textContent = '';
+  const cred = { email: $('#l-email').value.trim(), password: $('#l-senha').value };
+  if (criando) {
+    const { error } = await sb.auth.signUp(cred);
+    if (error) { $('#l-erro').textContent = /not allowed|permitido|Database error/i.test(error.message) ? 'Esse e-mail não tem acesso' : error.message; return; }
+  }
+  const { error } = await sb.auth.signInWithPassword(cred);
+  if (error) $('#l-erro').textContent = 'E-mail ou senha incorretos'; else entrar();
+};
+$('#sair').onclick = async e => { e.preventDefault(); await sb.auth.signOut(); location.reload(); };
+
+function entrar() {
+  $('#login').classList.add('hide'); $('#app').classList.remove('hide');
+  $('#f-busca').value = ''; setTimeout(() => { if ($('#f-busca').value.includes('@')) { $('#f-busca').value = ''; feed(true); } }, 600);
+  carregarFiltros(); trocar(location.hash.slice(1) || 'ofertas'); contadores(); ultimaExec();
+}
+
+/* ---------- navegação ---------- */
+document.querySelectorAll('.nav').forEach(n => n.onclick = () => trocar(n.dataset.v));
+function trocar(v) {
+  view = v; location.hash = v;
+  document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.v === v));
+  $('#v-ofertas').classList.toggle('hide', !['ofertas', 'salvas'].includes(v));
+  $('#v-palavras').classList.toggle('hide', v !== 'palavras');
+  $('#v-config').classList.toggle('hide', v !== 'config');
+  if (v === 'ofertas' || v === 'salvas') {
+    $('#t-feed').textContent = v === 'salvas' ? 'Ofertas salvas' : 'Ofertas mineradas';
+    $('#s-feed').textContent = v === 'salvas' ? 'As que você marcou pra modelar' : 'Anúncios com 2+ ativos usando o mesmo criativo';
+    feed(true);
+  }
+  if (v === 'palavras') listarPalavras();
+  if (v === 'config') carregarConfig();
+}
+
+/* ---------- feed ---------- */
+['#f-palavra', '#f-pais', '#f-midia', '#f-periodo', '#f-ordem'].forEach(s => $(s).onchange = () => feed(true));
+let tBusca; $('#f-busca').oninput = () => { clearTimeout(tBusca); tBusca = setTimeout(() => feed(true), 350); };
+$('#b-mais').onclick = () => feed(false);
+
+async function carregarFiltros() {
+  const { data } = await sb.from('mina_palavras').select('palavra,pais').order('palavra');
+  const pal = [...new Set((data || []).map(d => d.palavra))];
+  const pai = [...new Set((data || []).map(d => d.pais))];
+  $('#f-palavra').innerHTML = '<option value="">Todas as palavras</option>' + pal.map(p => `<option>${esc(p)}</option>`).join('');
+  $('#f-pais').innerHTML = '<option value="">Todos os países</option>' + pai.map(p => `<option>${esc(p)}</option>`).join('');
+}
+
+async function feed(reset) {
+  if (reset) { pagina = 0; $('#grid').innerHTML = ''; }
+  let q = sb.from('mina_anuncios').select('*', { count: 'exact' });
+  q = view === 'salvas' ? q.eq('status', 'salva') : q.neq('status', 'descartada');
+  const busca = $('#f-busca').value.trim();
+  if (busca) q = q.or(`page_nome.ilike.%${busca}%,texto.ilike.%${busca}%,link_vendas.ilike.%${busca}%,titulo.ilike.%${busca}%`);
+  if ($('#f-palavra').value) q = q.eq('palavra', $('#f-palavra').value);
+  if ($('#f-pais').value) q = q.eq('pais', $('#f-pais').value);
+  if ($('#f-midia').value) q = q.eq('tipo_midia', $('#f-midia').value);
+  if ($('#f-periodo').value) q = q.gte('primeira_vez', new Date(Date.now() - $('#f-periodo').value * 864e5).toISOString());
+  const ord = $('#f-ordem').value;
+  if (ord === 'qtd') q = q.order('qtd_ads', { ascending: false });
+  if (ord === 'novos') q = q.order('inicio', { ascending: false, nullsFirst: false });
+  if (ord === 'minerados') q = q.order('primeira_vez', { ascending: false });
+  q = q.range(pagina * POR_PAG, pagina * POR_PAG + POR_PAG - 1);
+
+  const { data, count, error } = await q;
+  if (error) { toast('Erro: ' + error.message); return; }
+  $('#contagem').textContent = `${count ?? 0} ofertas`;
+  if (reset && !data.length) {
+    $('#grid').innerHTML = `<div class="vazio" style="grid-column:1/-1">${view === 'salvas'
+      ? 'Nenhuma oferta salva ainda.'
+      : 'Nenhuma oferta ainda. Cadastre palavras-chave e clique em <b>Minerar agora</b> nas Configurações.'}</div>`;
+  }
+  $('#grid').insertAdjacentHTML('beforeend', data.map(card).join(''));
+  pagina++;
+  $('#b-mais').classList.toggle('hide', pagina * POR_PAG >= (count ?? 0));
+}
+
+function card(a) {
+  const dias = a.inicio ? Math.max(0, Math.floor((Date.now() - new Date(a.inicio + 'T12:00:00')) / 864e5)) : '—';
+  const subiu = a.qtd_ads_anterior != null && a.qtd_ads > a.qtd_ads_anterior ? `<span class="c-up">▲ +${a.qtd_ads - a.qtd_ads_anterior}</span>` : '';
+  const novo = (Date.now() - new Date(a.primeira_vez)) < 864e5;
+  const media = a.video_url
+    ? `<img src="${esc(a.imagem_url || '')}" onerror="this.style.display='none'"><div class="play" onclick="tocar(this,'${esc(a.video_url)}')"></div><span class="tag">vídeo</span>`
+    : a.imagem_url ? `<img src="${esc(a.imagem_url)}" onerror="this.outerHTML='<div class=sem>Mídia expirou — abra o anúncio</div>'">`
+    : `<div class="sem">Sem mídia</div>`;
+  const bib = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=${esc(a.pais || 'ALL')}&view_all_page_id=${esc(a.page_id)}`;
+  const ad = `https://www.facebook.com/ads/library/?id=${esc(a.ad_archive_id)}`;
+  return `<div class="card" id="c${a.id}">
+    <div class="c-top">
+      <div class="c-qtd"><b>${a.qtd_ads} anúncios ${subiu}</b>usam esse criativo</div>
+      <button class="btn sm ${a.status === 'salva' ? 'salvo' : ''}" onclick="salvar(${a.id},this)">${a.status === 'salva' ? '✓ Salva' : '☆ Salvar'}</button>
+    </div>
+    <div class="c-media">${media}</div>
+    <div class="c-pag">${a.page_foto ? `<img src="${esc(a.page_foto)}" onerror="this.remove()">` : ''}<span>${esc(a.page_nome || 'Página')}</span></div>
+    <div class="c-txt">${esc(a.texto || a.titulo || 'Sem descrição')}</div>
+    <div class="c-acoes">
+      ${a.video_url || a.imagem_url ? `<a class="btn sec sm" href="${esc(a.video_url || a.imagem_url)}" target="_blank" rel="noopener">⬇ Baixar anúncio</a>` : ''}
+      <button class="btn sec sm" style="flex:0" title="Descartar" onclick="descartar(${a.id})">✕</button>
+    </div>
+    <div class="c-rod">
+      <div><span class="ic">🕒</span>${dias} dias${novo ? '<span class="novo">novo</span>' : ''}</div>
+      <a href="${ad}" target="_blank" rel="noopener"><span class="ic">ⓕ</span>Ver anúncio</a>
+      <a href="${bib}" target="_blank" rel="noopener"><span class="ic">📚</span>Biblioteca</a>
+      ${a.link_vendas ? `<a href="${esc(a.link_vendas)}" target="_blank" rel="noopener"><span class="ic">🌐</span>Visitar site</a>` : '<div><span class="ic">🌐</span>sem link</div>'}
+    </div>
+    <div style="padding:0 12px 10px;font-size:11px;color:var(--mut)">🔑 ${esc(a.palavra || '')} · ${esc(a.pais || '')}</div>
+  </div>`;
+}
+
+function tocar(el, url) {
+  const box = el.parentElement;
+  box.innerHTML = `<video src="${url}" controls autoplay playsinline></video>`;
+  box.querySelector('video').onerror = () => box.innerHTML = '<div class="sem">Vídeo expirou — clique em "Ver anúncio"</div>';
+}
+async function salvar(id, b) {
+  const novo = b.classList.contains('salvo') ? 'nova' : 'salva';
+  await sb.from('mina_anuncios').update({ status: novo }).eq('id', id);
+  b.classList.toggle('salvo'); b.textContent = novo === 'salva' ? '✓ Salva' : '☆ Salvar';
+  if (view === 'salvas' && novo === 'nova') $('#c' + id).remove();
+  contadores();
+}
+async function descartar(id) {
+  await sb.from('mina_anuncios').update({ status: 'descartada' }).eq('id', id);
+  $('#c' + id).remove(); contadores();
+}
+
+/* ---------- palavras ---------- */
+$('#f-add').onsubmit = async e => {
+  e.preventDefault();
+  const pais = $('#p-pais').value;
+  const lista = $('#p-palavra').value.split(',').map(s => s.trim()).filter(Boolean).map(palavra => ({ palavra, pais }));
+  const { error } = await sb.from('mina_palavras').upsert(lista, { onConflict: 'palavra,pais', ignoreDuplicates: true });
+  if (error) return toast('Erro: ' + error.message);
+  $('#p-palavra').value = ''; listarPalavras(); carregarFiltros(); toast(`${lista.length} palavra(s) adicionada(s)`);
+};
+async function listarPalavras() {
+  const [{ data }, { data: cont }] = await Promise.all([
+    sb.from('mina_palavras').select('*').order('created_at', { ascending: false }),
+    sb.from('mina_anuncios').select('palavra,pais').neq('status', 'descartada').limit(10000)
+  ]);
+  const n = {}; (cont || []).forEach(c => { const k = c.palavra + '|' + c.pais; n[k] = (n[k] || 0) + 1; });
+  $('#t-palavras').innerHTML = (data || []).map(p => `<tr>
+    <td>${esc(p.palavra)}</td><td>${esc(p.pais)}</td>
+    <td><input type="checkbox" ${p.ativa ? 'checked' : ''} onchange="ativa(${p.id},this.checked)"></td>
+    <td>${n[p.palavra + '|' + p.pais] || 0}</td>
+    <td><button class="x" onclick="remover(${p.id})">✕</button></td></tr>`).join('')
+    || '<tr><td colspan="5" style="color:var(--mut)">Nenhuma palavra ainda.</td></tr>';
+}
+async function ativa(id, v) { await sb.from('mina_palavras').update({ ativa: v }).eq('id', id); }
+async function remover(id) { await sb.from('mina_palavras').delete().eq('id', id); listarPalavras(); carregarFiltros(); }
+
+/* ---------- config ---------- */
+async function fn(acao, extra = {}) {
+  const { data, error } = await sb.functions.invoke('minera', { body: { action: acao, ...extra } });
+  if (error) { let m = error.message; try { m = (await error.context.json()).erro || m; } catch (_) {} throw new Error(m); }
+  return data;
+}
+async function carregarConfig() {
+  const { data: c } = await sb.from('mina_config').select('*').eq('id', 1).single();
+  $('#c-min').value = c?.min_ads ?? 2; $('#c-dias').value = c?.max_dias ?? ''; $('#c-lim').value = c?.limite_por_palavra ?? 1000; $('#c-url').value = c?.url_modelo ?? '';
+  fn('status').then(s => { $('#tk-st').textContent = s.tem_token ? 'conectado' : 'falta salvar'; $('#tk-st').className = 'pill ' + (s.tem_token ? 'concluida' : 'falhou'); }).catch(() => {});
+  execucoes();
+}
+$('#b-cfg').onclick = async () => {
+  const { error } = await sb.from('mina_config').update({
+    min_ads: +$('#c-min').value || 2, max_dias: $('#c-dias').value ? +$('#c-dias').value : null,
+    limite_por_palavra: +$('#c-lim').value || 1000, url_modelo: $('#c-url').value.trim() || null, updated_at: new Date().toISOString()
+  }).eq('id', 1);
+  toast(error ? 'Erro: ' + error.message : 'Filtros salvos ✓');
+};
+$('#b-token').onclick = async () => {
+  const t = $('#c-token').value.trim(); if (!t) return;
+  try { await fn('salvar_token', { token: t }); $('#c-token').value = ''; toast('Token salvo ✓'); carregarConfig(); }
+  catch (e) { toast('Erro: ' + e.message); }
+};
+$('#b-minerar').onclick = async () => {
+  $('#b-minerar').disabled = true; $('#m-status').textContent = 'Disparando...';
+  try {
+    const r = await fn('iniciar', { forcar: true });
+    $('#m-status').textContent = r.iniciadas ? `✓ ${r.iniciadas} buscas iniciadas. Os anúncios entram em alguns minutos.` : (r.aviso || 'Nada iniciado');
+    if (r.erros?.length) toast('Algumas falharam: ' + r.erros[0].slice(0, 120));
+    execucoes();
+  } catch (e) { $('#m-status').textContent = 'Erro: ' + e.message; }
+  $('#b-minerar').disabled = false;
+};
+async function execucoes() {
+  const { data } = await sb.from('mina_execucoes').select('*').order('iniciada_em', { ascending: false }).limit(30);
+  $('#t-exec').innerHTML = (data || []).map(e => `<tr>
+    <td>${dt(e.iniciada_em)}</td><td>${esc(e.palavra || '')} <span style="color:var(--mut)">${esc(e.pais || '')}</span></td>
+    <td><span class="pill ${e.status}">${e.status}</span></td>
+    <td>${e.anuncios_lidos ?? '—'}</td><td>${e.novos ?? '—'}</td><td>${e.atualizados ?? '—'}</td></tr>`).join('')
+    || '<tr><td colspan="6" style="color:var(--mut)">Nenhuma execução ainda.</td></tr>';
+}
+
+/* ---------- topo/rodapé ---------- */
+async function contadores() {
+  const [a, b] = await Promise.all([
+    sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).neq('status', 'descartada'),
+    sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).eq('status', 'salva')
+  ]);
+  $('#n-ofertas').textContent = a.count ?? 0; $('#n-salvas').textContent = b.count ?? 0;
+}
+async function ultimaExec() {
+  const { data } = await sb.from('mina_execucoes').select('finalizada_em').eq('status', 'concluida').order('finalizada_em', { ascending: false }).limit(1);
+  $('#ultima').textContent = data?.[0] ? 'Última mineração: ' + dt(data[0].finalizada_em) : 'Nenhuma mineração ainda';
+}
+
+/* ---------- utils ---------- */
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function dt(s) { return s ? new Date(s).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; }
+function toast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
+
+iniciar();
+</script>
+</body>
+</html>
