@@ -153,6 +153,26 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 .c-top .btn{flex-shrink:0}.c-qtd{min-width:0}.c-qtd b{white-space:nowrap;font-size:17px!important}
 .c-txt{padding:0;margin:6px 12px 12px;line-height:1.45;max-height:4.35em}
 @media(max-width:760px){h1{font-size:24px}}
+
+/* chips no estilo Lab */
+.chip{background:var(--bg)!important;color:var(--txt)!important;border:1px solid var(--line);border-radius:2px!important;font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:500!important}
+/* ---------- acompanhamento ---------- */
+.acomp-on{background:var(--lime)!important;color:#0b0b0c!important;border-color:var(--lime)!important}
+.acomp-lista{display:flex;flex-direction:column;gap:12px;max-width:1100px}
+.acomp{display:flex;gap:14px;background:var(--card);border:1px solid var(--borda,var(--line));border-radius:2px;padding:12px}
+.ac-thumb{width:84px;min-width:84px;height:112px;background:#000;overflow:hidden}.ac-thumb img{width:100%;height:100%;object-fit:cover}
+.ac-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.ac-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ac-top b{font-size:15px}
+.st{font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;padding:3px 7px;border:1px solid var(--line)}
+.st-esc{background:var(--lime);color:#0b0b0c;border-color:var(--lime)}.st-mor{background:#0b0b0c;color:#fff}.st-cai{color:var(--bad)}.st-nova{color:var(--mut)}
+.ac-resumo{display:flex;gap:16px;font-size:12px;color:var(--mut);flex-wrap:wrap}.ac-resumo b{color:var(--txt)}
+.ac-dias{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.dia{display:flex;flex-direction:column;align-items:center;min-width:62px;border:1px solid var(--line);padding:6px 4px;background:var(--bg)}
+.dia span{font-family:'IBM Plex Mono',monospace;font-size:9.5px;text-transform:uppercase;color:var(--mut)}
+.dia b{font-size:18px;font-weight:800;line-height:1.2}.dia i{font-style:normal;font-size:11px;font-weight:700;min-height:14px;color:var(--mut)}
+.dia i.up{color:var(--ok)}.dia i.down{color:var(--bad)}
+.ac-links{display:flex;gap:14px;flex-wrap:wrap;font-size:12px}.ac-links a{color:var(--mut);text-decoration:underline;text-underline-offset:3px}.ac-links a:hover{color:var(--txt)}
+@media(max-width:760px){.ac-thumb{width:64px;min-width:64px;height:86px}.nav{font-size:10px;padding:6px 4px}}
 </style>
 </head>
 <body>
@@ -176,6 +196,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     <div class="logo"><i><svg viewBox="8 8 84 84" width="34" height="34" aria-hidden="true"><g fill="#0b0b0c" transform="translate(50 50) scale(0.86) translate(-55 -46)"> <rect x="45" y="22" width="10" height="66" rx="5" transform="rotate(45 50 55)"/> <path d="M22 34 C 38 14, 62 12, 80 22 C 86 26, 88 30, 86 33 C 70 24, 46 24, 26 40 C 22 42, 19 38, 22 34 Z" transform="rotate(45 52 30) translate(2 2)"/> <rect x="58" y="28" width="16" height="12" rx="3" transform="rotate(45 66 34)"/> </g></svg></i>Garimpo</div>
     <div class="menu-t">Mineração</div>
     <a class="nav" data-v="ofertas">🔥 Ofertas <b id="n-ofertas">0</b></a>
+    <a class="nav" data-v="acompanhando">📡 Acompanhando <b id="n-acomp">0</b></a>
     <a class="nav" data-v="salvas">⭐ Salvas <b id="n-salvas">0</b></a>
     <a class="nav" data-v="palavras">🔑 Palavras-chave</a>
     <a class="nav" data-v="config">⚙️ Configurações</a>
@@ -214,6 +235,16 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     </section>
 
     <!-- PALAVRAS -->
+    <section id="v-acomp" class="hide">
+      <h1>Acompanhando</h1>
+      <p class="sub">Ofertas novas vigiadas dia a dia por 7 dias. Checagem automática todo dia às 13h.</p>
+      <div class="filtros">
+        <button class="btn" id="b-checar">📡 Checar agora</button>
+        <span class="sub" style="margin:0" id="acomp-status"></span>
+      </div>
+      <div id="lista-acomp" class="acomp-lista"></div>
+    </section>
+
     <section id="v-palavras" class="hide">
       <h1>Palavras-chave</h1>
       <p class="sub">O robô busca cada uma na Biblioteca de Anúncios todo dia às 6h</p>
@@ -351,6 +382,8 @@ function trocar(v) {
   document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.v === v));
   $('#v-ofertas').classList.toggle('hide', !['ofertas', 'salvas'].includes(v));
   $('#v-palavras').classList.toggle('hide', v !== 'palavras');
+  $('#v-acomp').classList.toggle('hide', v !== 'acompanhando');
+  if (v === 'acompanhando') listarAcomp();
   $('#v-config').classList.toggle('hide', v !== 'config');
   if (v === 'ofertas' || v === 'salvas') {
     $('#t-feed').textContent = v === 'salvas' ? 'Ofertas salvas' : 'Ofertas mineradas';
@@ -423,6 +456,7 @@ function card(a) {
     <div class="c-txt">${esc(a.texto || a.titulo || 'Sem descrição')}</div>
     <div class="c-acoes">
       ${a.video_url || a.imagem_url ? `<a class="btn sec sm" href="${esc(a.video_url || a.imagem_url)}" target="_blank" rel="noopener">⬇ Baixar anúncio</a>` : ''}
+      <button class="btn sec sm ${a.acompanhar ? 'acomp-on' : ''}" style="flex:0" title="Acompanhar dia a dia" onclick="alternarAcomp(${a.id},this)">📡</button>
       <button class="btn sec sm" style="flex:0" title="Descartar" onclick="descartar(${a.id})">✕</button>
     </div>
     <div class="c-rod">
@@ -543,13 +577,71 @@ async function execucoes() {
     || '<tr><td colspan="6" style="color:var(--mut)">Nenhuma execução ainda.</td></tr>';
 }
 
+/* ---------- acompanhamento dia a dia ---------- */
+const hojeBR = (o = 0) => new Date(Date.now() - 3 * 3600e3 + o * 864e5).toISOString().slice(0, 10);
+const ST = {
+  nova: ['Nova', 'st-nova'], escalando: ['🔥 Escalando', 'st-esc'], estavel: ['Estável', 'st-est'],
+  caindo: ['📉 Caindo', 'st-cai'], morreu: ['💀 Morreu', 'st-mor'], encerrado: ['Encerrado (7 dias)', 'st-enc']
+};
+async function listarAcomp() {
+  const { data: ofs } = await sb.from('mina_anuncios').select('*').not('acompanhar_desde', 'is', null)
+    .gte('acompanhar_desde', hojeBR(-8)).order('acompanhar', { ascending: false }).order('qtd_ads', { ascending: false }).limit(200);
+  const ids = (ofs || []).map(o => o.id);
+  const { data: hist } = ids.length ? await sb.from('mina_acompanhamento').select('*').in('anuncio_id', ids).order('dia') : { data: [] };
+  const porId = {}; (hist || []).forEach(h => (porId[h.anuncio_id] = porId[h.anuncio_id] || []).push(h));
+  $('#lista-acomp').innerHTML = (ofs || []).map(o => linhaAcomp(o, porId[o.id] || [])).join('') ||
+    '<div class="vazio">Nenhuma oferta em acompanhamento. Ofertas que começam a rodar no dia entram aqui sozinhas, ou toque em 📡 em qualquer card.</div>';
+}
+function linhaAcomp(o, h) {
+  const st = ST[o.acompanhar_status] || ST.nova;
+  const hoje = h[h.length - 1] || {};
+  const dias = h.map((d, i) => {
+    const ant = i ? h[i - 1].criativo_ads : null;
+    const dl = ant != null ? d.criativo_ads - ant : null;
+    return `<div class="dia"><span>${d.dia_n ? d.dia_n + 'º dia' : d.dia.slice(5)}</span><b>${d.criativo_ads ?? '—'}</b>${dl != null ? `<i class="${dl > 0 ? 'up' : dl < 0 ? 'down' : ''}">${dl > 0 ? '+' : ''}${dl}</i>` : '<i></i>'}</div>`;
+  }).join('');
+  const bib = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&view_all_page_id=${esc(o.page_id)}`;
+  return `<div class="acomp" id="ac${o.id}">
+    <div class="ac-thumb">${o.imagem_url ? `<img src="${esc(o.imagem_url)}" onerror="this.remove()">` : ''}</div>
+    <div class="ac-info">
+      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}</b><span class="st ${st[1]}">${st[0]}</span>${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
+      <div class="ac-resumo">${hoje.pagina_ads != null ? `<span><b>${hoje.pagina_ads}</b> ativos na página</span><span><b>${hoje.novos_24h ?? 0}</b> novos subidos hoje</span>` : '<span>Aguardando a 1ª checagem</span>'}</div>
+      <div class="ac-dias">${dias}</div>
+      <div class="ac-links">
+        <a href="https://www.facebook.com/ads/library/?id=${esc(o.ad_archive_id)}" target="_blank" rel="noopener">Ver anúncio</a>
+        <a href="${bib}" target="_blank" rel="noopener">Biblioteca</a>
+        ${o.link_vendas ? `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener">Visitar site</a>` : ''}
+        ${o.acompanhar ? `<a href="#" onclick="pararAcomp(${o.id});return false">Parar de acompanhar</a>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+async function alternarAcomp(id, b) {
+  const ligar = !b.classList.contains('acomp-on');
+  await sb.from('mina_anuncios').update(ligar ? { acompanhar: true, acompanhar_desde: hojeBR(), acompanhar_status: 'nova' } : { acompanhar: false, acompanhar_status: 'encerrado' }).eq('id', id);
+  b.classList.toggle('acomp-on', ligar); toast(ligar ? 'Acompanhando dia a dia 📡' : 'Parou de acompanhar'); contadores();
+}
+async function pararAcomp(id) {
+  await sb.from('mina_anuncios').update({ acompanhar: false, acompanhar_status: 'encerrado' }).eq('id', id);
+  listarAcomp(); contadores();
+}
+$('#b-checar').onclick = async () => {
+  $('#b-checar').disabled = true; $('#acomp-status').textContent = 'Disparando...';
+  try {
+    const r = await fn('acompanhar');
+    $('#acomp-status').textContent = r.paginas ? `✓ Checando ${r.paginas} páginas${r.faltam ? ` (+${r.faltam} na fila)` : ''}. Resultado em alguns minutos.` : 'Tudo já foi checado hoje ✓';
+  } catch (e) { $('#acomp-status').textContent = 'Erro: ' + e.message; }
+  $('#b-checar').disabled = false;
+};
+
 /* ---------- topo/rodapé ---------- */
 async function contadores() {
-  const [a, b] = await Promise.all([
+  const [a, b, c] = await Promise.all([
     sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).neq('status', 'descartada'),
-    sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).eq('status', 'salva')
+    sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).eq('status', 'salva'),
+    sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).eq('acompanhar', true)
   ]);
-  $('#n-ofertas').textContent = a.count ?? 0; $('#n-salvas').textContent = b.count ?? 0;
+  $('#n-ofertas').textContent = a.count ?? 0; $('#n-salvas').textContent = b.count ?? 0; $('#n-acomp').textContent = c.count ?? 0;
 }
 async function ultimaExec() {
   const { data } = await sb.from('mina_execucoes').select('finalizada_em').eq('status', 'concluida').order('finalizada_em', { ascending: false }).limit(1);
