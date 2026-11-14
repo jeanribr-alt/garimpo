@@ -589,7 +589,19 @@ async function listarAcomp() {
   const ids = (ofs || []).map(o => o.id);
   const { data: hist } = ids.length ? await sb.from('mina_acompanhamento').select('*').in('anuncio_id', ids).order('dia') : { data: [] };
   const porId = {}; (hist || []).forEach(h => (porId[h.anuncio_id] = porId[h.anuncio_id] || []).push(h));
-  $('#lista-acomp').innerHTML = (ofs || []).map(o => linhaAcomp(o, porId[o.id] || [])).join('') ||
+  // uma linha por página: usa o criativo mais forte e junta o histórico
+  const prio = { escalando: 5, nova: 4, estavel: 3, caindo: 2, morreu: 1, encerrado: 0 };
+  const paginas = new Map();
+  for (const o of ofs || []) {
+    const k = o.page_id || ('x' + o.id);
+    const atual = paginas.get(k);
+    if (!atual) { paginas.set(k, { ...o, ids: [o.id] }); continue; }
+    atual.ids.push(o.id);
+    if ((o.qtd_ads || 0) > (atual.qtd_ads || 0)) Object.assign(atual, { ...o, ids: atual.ids, acompanhar: atual.acompanhar || o.acompanhar });
+    if ((prio[o.acompanhar_status] ?? 0) > (prio[atual.acompanhar_status] ?? 0)) atual.acompanhar_status = o.acompanhar_status;
+    atual.acompanhar = atual.acompanhar || o.acompanhar;
+  }
+  $('#lista-acomp').innerHTML = [...paginas.values()].map(o => linhaAcomp(o, porId[o.id] || [])).join('') ||
     '<div class="vazio">Nenhuma oferta em acompanhamento. Ofertas que começam a rodar no dia entram aqui sozinhas, ou toque em 📡 em qualquer card.</div>';
 }
 function linhaAcomp(o, h) {
@@ -606,7 +618,7 @@ function linhaAcomp(o, h) {
         <a href="https://www.facebook.com/ads/library/?id=${esc(o.ad_archive_id)}" target="_blank" rel="noopener">Ver anúncio</a>
         <a href="${bib}" target="_blank" rel="noopener">Biblioteca</a>
         ${o.link_vendas ? `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener">Visitar site</a>` : ''}
-        ${o.acompanhar ? `<a href="#" onclick="pararAcomp(${o.id});return false">Parar de acompanhar</a>` : ''}
+        ${o.acompanhar ? `<a href="#" onclick="pararAcomp('${o.ids.join(',')}');return false">Parar de acompanhar</a>` : ''}
       </div>
     </div>
   </div>`;
@@ -616,8 +628,8 @@ async function alternarAcomp(id, b) {
   await sb.from('mina_anuncios').update(ligar ? { acompanhar: true, acompanhar_desde: hojeBR(), acompanhar_status: 'nova' } : { acompanhar: false, acompanhar_status: 'encerrado' }).eq('id', id);
   b.classList.toggle('acomp-on', ligar); toast(ligar ? 'Acompanhando dia a dia 📡' : 'Parou de acompanhar'); contadores();
 }
-async function pararAcomp(id) {
-  await sb.from('mina_anuncios').update({ acompanhar: false, acompanhar_status: 'encerrado' }).eq('id', id);
+async function pararAcomp(ids) {
+  await sb.from('mina_anuncios').update({ acompanhar: false, acompanhar_status: 'encerrado' }).in('id', String(ids).split(',').map(Number));
   listarAcomp(); contadores();
 }
 $('#b-checar').onclick = async () => {
@@ -634,9 +646,9 @@ async function contadores() {
   const [a, b, c] = await Promise.all([
     sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).neq('status', 'descartada'),
     sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).eq('status', 'salva'),
-    sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).eq('acompanhar', true)
+    sb.from('mina_anuncios').select('page_id').eq('acompanhar', true)
   ]);
-  $('#n-ofertas').textContent = a.count ?? 0; $('#n-salvas').textContent = b.count ?? 0; $('#n-acomp').textContent = c.count ?? 0;
+  $('#n-ofertas').textContent = a.count ?? 0; $('#n-salvas').textContent = b.count ?? 0; $('#n-acomp').textContent = new Set((c.data || []).map(x => x.page_id)).size;
 }
 async function ultimaExec() {
   const { data } = await sb.from('mina_execucoes').select('finalizada_em').eq('status', 'concluida').order('finalizada_em', { ascending: false }).limit(1);
