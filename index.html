@@ -171,6 +171,16 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 .dia span{font-family:'IBM Plex Mono',monospace;font-size:9.5px;text-transform:uppercase;color:var(--mut)}
 .dia b{font-size:18px;font-weight:800;line-height:1.2}.dia i{font-style:normal;font-size:11px;font-weight:700;min-height:14px;color:var(--mut)}
 .dia em{font-style:normal;font-size:9.5px;color:var(--mut);margin-top:-2px}.dia i.up{color:var(--ok)}.dia i.down{color:var(--bad)}
+.veredito{font-size:13px;font-weight:600;padding:8px 10px;border-left:3px solid var(--line);background:var(--bg)}
+.v-bom{border-color:var(--ok)}.v-meio{border-color:var(--warn)}.v-ruim{border-color:var(--bad)}.v-espera{border-color:var(--mut);color:var(--mut);font-weight:500}
+.relat summary{cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt);list-style:none}
+.relat summary::-webkit-details-marker{display:none}.relat summary:before{content:"▸ "}.relat[open] summary:before{content:"▾ "}
+.relat ol{list-style:none;margin:10px 0 0;padding:0;border-left:2px solid var(--line)}
+.relat li{display:flex;gap:10px;padding:6px 0 6px 12px;position:relative;font-size:13px}
+.relat li:before{content:"";position:absolute;left:-6px;top:11px;width:10px;height:10px;background:var(--paper,#fff);border:2px solid var(--mut);border-radius:50%}
+.relat li.up:before{border-color:var(--ok);background:var(--ok)}.relat li.down:before{border-color:var(--bad);background:var(--bad)}
+.relat li span{font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;color:var(--mut);min-width:48px;padding-top:2px}
+.relat li p{margin:0;line-height:1.45}
 .ac-links{display:flex;gap:14px;flex-wrap:wrap;font-size:12px}.ac-links a{color:var(--mut);text-decoration:underline;text-underline-offset:3px}.ac-links a:hover{color:var(--txt)}
 @media(max-width:760px){.ac-thumb{width:64px;min-width:64px;height:86px}.nav{font-size:10px;padding:6px 4px}}
 </style>
@@ -604,6 +614,42 @@ async function listarAcomp() {
   $('#lista-acomp').innerHTML = [...paginas.values()].map(o => linhaAcomp(o, porId[o.id] || [])).join('') ||
     '<div class="vazio">Nenhuma oferta em acompanhamento. Ofertas que começam a rodar no dia entram aqui sozinhas, ou toque em 📡 em qualquer card.</div>';
 }
+/* relatório dia a dia em português */
+function relatorio(h, inicio) {
+  const dias = h.filter(d => d.pagina_ads != null);
+  return dias.map((d, i) => {
+    const n = d.dia_n || (inicio ? Math.round((Date.parse(d.dia) - Date.parse(inicio)) / 864e5) + 1 : i + 1);
+    const cri = d.criativos ?? '?', ads = d.pagina_ads;
+    if (!ads) return { n, txt: 'Parou de anunciar. Todos os anúncios foram desligados.', cls: 'down' };
+    if (i === 0) return { n, txt: `Começou com <b>${cri} criativo${cri == 1 ? '' : 's'}</b> e <b>${ads} anúncios</b> no ar.`, cls: '' };
+    const ant = dias[i - 1];
+    const antes = new Set(ant.criativos_ids || []), agora = d.criativos_ids || [];
+    const novos = agora.filter(x => !antes.has(x)).length;
+    const pausou = [...antes].filter(x => !agora.includes(x)).length;
+    const dif = ads - (ant.pagina_ads || 0);
+    const acoes = [];
+    if (pausou) acoes.push(`pausou ${pausou} criativo${pausou > 1 ? 's' : ''}`);
+    if (novos) acoes.push(`testou ${novos} novo${novos > 1 ? 's' : ''}`);
+    let mov = dif > 0 ? `<b>aumentou</b> pra ${ads} anúncios (+${dif})` : dif < 0 ? `<b>diminuiu</b> pra ${ads} anúncios (${dif})` : `<b>manteve</b> ${ads} anúncios`;
+    if (dif > 0 && ant.pagina_ads && ads >= ant.pagina_ads * 2) mov = `<b>duplicou</b> pra ${ads} anúncios (+${dif})`;
+    const frase = (acoes.length ? acoes.join(', ') + ' e ' : '') + mov + ` · ${cri} criativo${cri == 1 ? '' : 's'} rodando.`;
+    return { n, txt: frase[0].toUpperCase() + frase.slice(1), cls: dif > 0 ? 'up' : dif < 0 ? 'down' : '' };
+  });
+}
+function vereditoTxt(h) {
+  const dias = h.filter(d => d.pagina_ads != null);
+  if (!dias.length) return ['⏳ Aguardando a 1ª checagem', 'v-espera'];
+  const ult = dias[dias.length - 1], pri = dias[0];
+  if (!ult.pagina_ads) return [`💀 Não validou: parou no ${dias.length}º dia de acompanhamento`, 'v-ruim'];
+  if (dias.length === 1) return ['⏳ Em teste: volte amanhã pra ver se ele manteve', 'v-espera'];
+  const cresceu = ult.pagina_ads > pri.pagina_ads, manteve = ult.pagina_ads >= pri.pagina_ads;
+  const caiuHoje = ult.pagina_ads < dias[dias.length - 2].pagina_ads;
+  if (dias.length >= 3 && manteve && !caiuHoje) return [`✅ Validado: ${dias.length} dias no ar ${cresceu ? 'e escalando' : 'e mantendo'}. Produto bom, pode modelar.`, 'v-bom'];
+  if (cresceu && !caiuHoje) return ['🔥 Escalando: ele está colocando mais verba. Forte candidato, confirme amanhã.', 'v-bom'];
+  if (caiuHoje && ult.pagina_ads > 0) return ['⚠️ Ainda testando: cortou anúncios. Espere mais 1 ou 2 dias.', 'v-meio'];
+  return ['⏳ Em teste: estável por enquanto, acompanhe mais um dia.', 'v-espera'];
+}
+
 function linhaAcomp(o, h) {
   const st = ST[o.acompanhar_status] || ST.nova;
   const hoje = h[h.length - 1] || {};
@@ -612,9 +658,11 @@ function linhaAcomp(o, h) {
   return `<div class="acomp" id="ac${o.id}">
     <div class="ac-thumb">${o.imagem_url ? `<img src="${esc(o.imagem_url)}" onerror="this.remove()">` : ''}</div>
     <div class="ac-info">
-      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia</span>` : ''}<span class="st ${st[1]}">${st[0]}</span>${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
+      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia</span>` : ''}${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
       <div class="ac-resumo">${hoje.pagina_ads != null ? `<span><b>${hoje.pagina_ads}</b> ativos na página</span><span><b>${hoje.novos_24h ?? 0}</b> novos subidos hoje</span>` : '<span>Aguardando a 1ª checagem</span>'}</div>
-            <div class="ac-links">
+            <div class="veredito ${vereditoTxt(h)[1]}">${vereditoTxt(h)[0]}</div>
+      ${relatorio(h, o.inicio).length ? `<details class="relat"><summary>Ver relatório dia a dia</summary><ol>${relatorio(h, o.inicio).map(r => `<li class="${r.cls}"><span>${r.n}º dia</span><p>${r.txt}</p></li>`).join('')}</ol></details>` : ''}
+      <div class="ac-links">
         <a href="https://www.facebook.com/ads/library/?id=${esc(o.ad_archive_id)}" target="_blank" rel="noopener">Ver anúncio</a>
         <a href="${bib}" target="_blank" rel="noopener">Biblioteca</a>
         ${o.link_vendas ? `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener">Visitar site</a>` : ''}
