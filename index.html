@@ -4,17 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Garimpo — Mineração de Ofertas</title>
-<script>try{if(localStorage.getItem('garimpo-tema')==='claro')document.documentElement.dataset.tema='claro'}catch(e){}</script>
+<script>try{if(localStorage.getItem('garimpo-tema')==='escuro')document.documentElement.dataset.tema='escuro'}catch(e){}</script>
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="icon" href="/icon-192.png">
-<meta name="theme-color" content="#070b16">
+<meta name="theme-color" content="#f5f5f2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Garimpo">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -22,14 +22,6 @@
   --pri:#1f6bff;--pri2:#3b82ff;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;
   --hover:rgba(255,255,255,.03);--sombra:rgba(0,0,0,.4);
 }
-/* modo claro */
-html[data-tema="claro"]{
-  --bg:#f4f6fb;--panel:#ffffff;--card:#ffffff;--line:#e2e7f0;--txt:#111827;--mut:#5b6478;
-  --pri:#1f6bff;--pri2:#1a5ae0;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;
-  --hover:rgba(0,0,0,.04);--sombra:rgba(15,23,42,.12);
-}
-html[data-tema="claro"] .card{box-shadow:0 1px 3px var(--sombra)}
-html[data-tema="claro"] .nav.on{background:rgba(31,107,255,.1)}
 .tema-btn{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;align-items:center;gap:8px;width:100%;justify-content:center;margin-bottom:10px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
@@ -42,6 +34,8 @@ input:focus,select:focus{border-color:var(--pri)}
 .btn.sec{background:transparent;border:1px solid var(--line);color:var(--txt)}
 .btn.sec:hover{border-color:var(--mut)}
 .btn.sm{padding:6px 10px;font-size:13px}
+.btn{white-space:nowrap}.c-up{white-space:nowrap}
+.chip{display:inline-block;background:rgba(31,107,255,.15);color:var(--pri2);padding:2px 8px;border-radius:20px;margin-right:6px;font-weight:600}
 .hide{display:none!important}
 
 /* login */
@@ -81,7 +75,7 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}
 .c-media img,.c-media video{width:100%;height:100%;object-fit:contain;background:#000}
 .c-media .play{position:absolute;width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;cursor:pointer}
 .c-media .play:after{content:"";border-left:18px solid #000;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:5px}
-.c-media .tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);font-size:11px;padding:3px 7px;border-radius:5px}
+.c-media .tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;padding:3px 7px;border-radius:5px}
 .c-media .sem{color:var(--mut);font-size:12px;padding:20px;text-align:center}
 .c-pag{display:flex;align-items:center;gap:8px;padding:10px 12px 0;font-weight:600;font-size:13px}
 .c-pag img{width:22px;height:22px;border-radius:50%;background:var(--line)}
@@ -136,6 +130,28 @@ button,a,.nav,select{touch-action:manipulation;-webkit-user-select:none;user-sel
   .linha label{min-width:0;width:100%}
   .box{padding:16px}
 }
+
+/* ===== estética: Branco Lab (claro = padrão, escuro = opcional) ===== */
+:root{--bg:#f5f5f2;--panel:#ffffff;--card:#ffffff;--line:#e4e4df;--txt:#0b0b0c;--mut:#71717a;--pri:#0b0b0c;--pri2:#27272a;
+  --ok:#16a34a;--warn:#d97706;--bad:#dc2626;--hover:rgba(0,0,0,.03);--sombra:rgba(15,23,42,.12);--lime:#c6ff3d;--ink:#0b0b0c;--paper:#ffffff;--borda:#d4d4cf}
+html[data-tema="escuro"]{--bg:#0b0b0c;--panel:#111113;--card:#141416;--line:#232327;--txt:#f4f4f5;--mut:#8b8b93;--pri:#f4f4f5;--pri2:#ffffff;
+  --ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--hover:rgba(255,255,255,.04);--sombra:rgba(0,0,0,.5);--ink:#f4f4f5;--paper:#141416;--borda:#2a2a2f}
+body{font-family:'Inter Tight',system-ui,sans-serif;background:var(--bg);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:48px 48px;background-attachment:fixed}
+aside{background:var(--panel)}.logo{font-weight:800;letter-spacing:-1.2px}.logo i{background:var(--lime);color:#0b0b0c;border-radius:4px}
+.menu-t,.c-qtd,.contagem,.pill,th,.c-rod a,.c-rod div,.tag,.nav b{font-family:'IBM Plex Mono',ui-monospace,monospace;text-transform:uppercase;letter-spacing:.6px;font-size:10.5px}
+.nav{border-radius:2px;color:var(--mut)}.nav:hover{color:var(--txt)}.nav.on{background:var(--ink);color:var(--lime)}
+html[data-tema="escuro"] .nav.on{background:var(--lime);color:#0b0b0c}
+.btn{background:var(--ink);color:var(--paper);border-radius:2px;font-weight:600}.btn:hover{background:var(--lime);color:#0b0b0c}
+.btn.sec{background:var(--paper);color:var(--ink);border:1px solid var(--ink)}.btn.sec:hover{background:var(--ink);color:var(--paper)}
+input,select,textarea{border-radius:2px!important;background:var(--paper)!important;color:var(--txt)!important}input:focus,select:focus{border-color:var(--ink)}
+.card,.box{border-radius:2px;border-color:var(--borda)}.card:hover{box-shadow:6px 6px 0 var(--ink);transform:translate(-3px,-3px);transition:.15s}
+html[data-tema="escuro"] .card:hover{box-shadow:6px 6px 0 var(--lime)}
+.c-qtd b{color:var(--ink);font-family:'Inter Tight',sans-serif;font-weight:800;text-transform:none;letter-spacing:-.5px}
+.salvo{background:var(--lime)!important;color:#0b0b0c!important}.c-up{background:var(--lime);color:#0b0b0c;padding:1px 4px}
+h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px}.tema-btn{border-radius:2px}
+.c-top .btn{flex-shrink:0}.c-qtd{min-width:0}.c-qtd b{white-space:nowrap;font-size:17px!important}
+.c-txt{padding:0;margin:6px 12px 12px;line-height:1.45;max-height:4.35em}
+@media(max-width:760px){h1{font-size:24px}}
 </style>
 </head>
 <body>
@@ -414,7 +430,7 @@ function card(a) {
       <a href="${bib}" target="_blank" rel="noopener"><span class="ic">📚</span>Biblioteca</a>
       ${a.link_vendas ? `<a href="${esc(a.link_vendas)}" target="_blank" rel="noopener"><span class="ic">🌐</span>Visitar site</a>` : '<div><span class="ic">🌐</span>sem link</div>'}
     </div>
-    <div style="padding:0 12px 10px;font-size:11px;color:var(--mut)">${a.nicho ? `<span style="background:rgba(31,107,255,.15);color:var(--pri2);padding:2px 7px;border-radius:20px;margin-right:6px">${esc(a.nicho)}</span>` : ''}🔑 ${esc(a.palavra || '')} · ${esc(a.pais || '')}</div>
+    <div style="padding:0 12px 10px;font-size:11px;color:var(--mut)">${a.nicho ? `<span class="chip">${esc(a.nicho)}</span>` : ''}🔑 ${esc(a.palavra || '')} · ${esc(a.pais || '')}</div>
   </div>`;
 }
 
@@ -546,17 +562,17 @@ function toast(m) { const t = document.createElement('div'); t.className = 'toas
 
 /* ---------- modo claro / escuro ---------- */
 function aplicarTema(t) {
-  if (t === 'claro') document.documentElement.dataset.tema = 'claro'; else delete document.documentElement.dataset.tema;
-  document.querySelectorAll('.tema-ic').forEach(e => e.textContent = t === 'claro' ? '🌙' : '☀️');
-  document.querySelectorAll('.tema-txt').forEach(e => e.textContent = t === 'claro' ? 'Modo escuro' : 'Modo claro');
-  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'claro' ? '#f4f6fb' : '#070b16';
+  if (t === 'escuro') document.documentElement.dataset.tema = 'escuro'; else delete document.documentElement.dataset.tema;
+  document.querySelectorAll('.tema-ic').forEach(e => e.textContent = t === 'escuro' ? '☀️' : '🌙');
+  document.querySelectorAll('.tema-txt').forEach(e => e.textContent = t === 'escuro' ? 'Modo claro' : 'Modo escuro');
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'escuro' ? '#0b0b0c' : '#f5f5f2';
 }
 function alternarTema() {
-  const novo = document.documentElement.dataset.tema === 'claro' ? 'escuro' : 'claro';
+  const novo = document.documentElement.dataset.tema === 'escuro' ? 'claro' : 'escuro';
   try { localStorage.setItem('garimpo-tema', novo); } catch (_) {}
   aplicarTema(novo);
 }
-aplicarTema(document.documentElement.dataset.tema === 'claro' ? 'claro' : 'escuro');
+aplicarTema(document.documentElement.dataset.tema === 'escuro' ? 'escuro' : 'claro');
 
 /* ---------- bloqueia zoom de pinça no iPhone (Safari ignora o viewport) ---------- */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
