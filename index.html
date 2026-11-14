@@ -156,6 +156,15 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 
 /* chips no estilo Lab */
 .chip{background:var(--bg)!important;color:var(--txt)!important;border:1px solid var(--line);border-radius:2px!important;font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:500!important}
+/* ---------- selos de formato e campeão ---------- */
+.c-media .fmt{position:absolute;bottom:8px;left:8px}
+.fmt{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.4px;padding:3px 7px;background:#fff;color:#0b0b0c;border:1px solid #0b0b0c;white-space:nowrap}
+.fm-famoso{background:#ffd84d}.fm-ia{background:var(--lime)}.fm-real{background:#fff}.fm-sem{background:#e9e9e4}.fm-arte{background:#e9e9e4}
+.campeao{display:flex;gap:12px;border:1px solid var(--ink);padding:10px;background:var(--paper)}
+.cp-thumb{position:relative;width:64px;min-width:64px;height:86px;background:#000;overflow:hidden}.cp-thumb img{width:100%;height:100%;object-fit:cover}
+.cp-thumb span{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:18px;text-shadow:0 1px 4px #000}
+.cp-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}.cp-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+.cp-num{font-size:13px}.cp-txt{font-size:12px;color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* ---------- acompanhamento ---------- */
 .acomp-on{background:var(--lime)!important;color:#0b0b0c!important;border-color:var(--lime)!important}
 .acomp-lista{display:flex;flex-direction:column;gap:12px;max-width:1100px}
@@ -227,6 +236,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
         <select id="f-palavra"><option value="">Todas as palavras</option></select>
         <select id="f-pais"><option value="">Todos os países</option></select>
         <select id="f-midia"><option value="">Vídeo e imagem</option><option value="video">Só vídeo</option><option value="imagem">Só imagem</option></select>
+        <select id="f-formato"><option value="">Todos os formatos</option><option value="expert_famoso">⭐ Expert famoso</option><option value="expert_real">🙋 Expert real</option><option value="expert_ia">🤖 Expert de IA</option><option value="sem_rosto">📝 Sem rosto</option><option value="arte">🎨 Arte / imagem</option></select>
         <select id="f-periodo">
           <option value="">Minerados: sempre</option>
           <option value="1">Hoje</option>
@@ -405,7 +415,7 @@ function trocar(v) {
 }
 
 /* ---------- feed ---------- */
-['#f-palavra', '#f-pais', '#f-midia', '#f-periodo', '#f-ordem'].forEach(s => $(s).onchange = () => feed(true));
+['#f-palavra', '#f-pais', '#f-midia', '#f-formato', '#f-periodo', '#f-ordem'].forEach(s => $(s).onchange = () => feed(true));
 let tBusca; $('#f-busca').oninput = () => { clearTimeout(tBusca); tBusca = setTimeout(() => feed(true), 350); };
 $('#b-mais').onclick = () => feed(false);
 
@@ -426,6 +436,7 @@ async function feed(reset) {
   if ($('#f-palavra').value) q = q.eq('palavra', $('#f-palavra').value);
   if ($('#f-pais').value) q = q.eq('pais', $('#f-pais').value);
   if ($('#f-midia').value) q = q.eq('tipo_midia', $('#f-midia').value);
+  if ($('#f-formato').value) q = q.eq('formato', $('#f-formato').value);
   if ($('#f-periodo').value) q = q.gte('primeira_vez', new Date(Date.now() - $('#f-periodo').value * 864e5).toISOString());
   const ord = $('#f-ordem').value;
   if (ord === 'qtd') q = q.order('qtd_ads', { ascending: false });
@@ -461,7 +472,7 @@ function card(a) {
       <div class="c-qtd"><b>${a.qtd_ads} anúncios ${subiu}</b>usam esse criativo</div>
       <button class="btn sm ${a.status === 'salva' ? 'salvo' : ''}" onclick="salvar(${a.id},this)">${a.status === 'salva' ? '✓ Salva' : '☆ Salvar'}</button>
     </div>
-    <div class="c-media">${media}</div>
+    <div class="c-media">${media}${seloFormato(a.formato)}</div>
     <div class="c-pag">${a.page_foto ? `<img src="${esc(a.page_foto)}" onerror="this.remove()">` : ''}<span>${esc(a.page_nome || 'Página')}</span></div>
     <div class="c-txt">${esc(a.texto || a.titulo || 'Sem descrição')}</div>
     <div class="c-acoes">
@@ -614,6 +625,42 @@ async function listarAcomp() {
   $('#lista-acomp').innerHTML = [...paginas.values()].map(o => linhaAcomp(o, porId[o.id] || [])).join('') ||
     '<div class="vazio">Nenhuma oferta em acompanhamento. Ofertas que começam a rodar no dia entram aqui sozinhas, ou toque em 📡 em qualquer card.</div>';
 }
+/* ---------- detector de expert: selos ---------- */
+const FORMATOS = {
+  expert_famoso: ['⭐ Expert famoso', 'fm-famoso'], expert_real: ['🙋 Expert real', 'fm-real'],
+  expert_ia: ['🤖 Expert de IA', 'fm-ia'], sem_rosto: ['📝 Sem rosto', 'fm-sem'], arte: ['🎨 Arte', 'fm-arte']
+};
+function seloFormato(f) { const x = FORMATOS[f]; return x ? `<span class="fmt ${x[1]}">${x[0]}</span>` : ''; }
+
+/* ---------- criativo campeão: o que mais cresceu na página ---------- */
+function blocoCampeao(h) {
+  const dias = h.filter(d => d.criativos_det && d.criativos_det.length);
+  if (!dias.length) return '';
+  const hoje = dias[dias.length - 1], c = hoje.criativos_det[0];
+  if (!c) return '';
+  // quantos anúncios esse criativo tinha no primeiro dia em que apareceu
+  let inicio = null, diaInicio = null, diaRef = null;
+  for (const d of h) {
+    const q = (d.criativos_qtd || {})[c.id] ?? (d.criativos_det || []).find(x => x.id === c.id)?.ads;
+    if (q != null) { inicio = q; diaInicio = d.dia_n; diaRef = d.dia; break; }
+  }
+  const cresc = inicio != null && diaRef !== hoje.dia ? c.ads - inicio : null;
+  const txtCresc = cresc == null ? `${c.ads} anúncios hoje` : cresc > 0 ? `${inicio} → <b>${c.ads} anúncios</b> (+${cresc})` : `${c.ads} anúncios (estável)`;
+  const outros = hoje.criativos_det.length - 1;
+  return `<div class="campeao">
+    <div class="cp-thumb">${c.img ? `<img src="${esc(c.img)}" onerror="this.remove()">` : ''}${c.video ? '<span>▶</span>' : ''}</div>
+    <div class="cp-info">
+      <div class="cp-top"><b>🏆 Criativo campeão</b>${seloFormato(c.formato)}</div>
+      <div class="cp-num">${txtCresc}${diaInicio && cresc ? ` desde o ${diaInicio}º dia` : ''}${outros > 0 ? ` · líder entre ${outros + 1} criativos` : ''}</div>
+      ${c.texto ? `<div class="cp-txt">${esc(c.texto)}</div>` : ''}
+      <div class="ac-links">
+        ${c.archive ? `<a href="https://www.facebook.com/ads/library/?id=${esc(c.archive)}" target="_blank" rel="noopener">Ver criativo</a>` : ''}
+        ${c.video || c.img ? `<a href="${esc(c.video || c.img)}" target="_blank" rel="noopener">Baixar</a>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
 /* relatório dia a dia em português */
 function relatorio(h, inicio) {
   const dias = h.filter(d => d.pagina_ads != null);
@@ -661,6 +708,7 @@ function linhaAcomp(o, h) {
       <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia</span>` : ''}${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
       <div class="ac-resumo">${hoje.pagina_ads != null ? `<span><b>${hoje.pagina_ads}</b> ativos na página</span><span><b>${hoje.novos_24h ?? 0}</b> novos subidos hoje</span>` : '<span>Aguardando a 1ª checagem</span>'}</div>
             <div class="veredito ${vereditoTxt(h)[1]}">${vereditoTxt(h)[0]}</div>
+      ${blocoCampeao(h)}
       ${relatorio(h, o.inicio).length ? `<details class="relat"><summary>Ver relatório dia a dia</summary><ol>${relatorio(h, o.inicio).map(r => `<li class="${r.cls}"><span>${r.n}º dia</span><p>${r.txt}</p></li>`).join('')}</ol></details>` : ''}
       <div class="ac-links">
         <a href="https://www.facebook.com/ads/library/?id=${esc(o.ad_archive_id)}" target="_blank" rel="noopener">Ver anúncio</a>
