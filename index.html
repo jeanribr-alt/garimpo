@@ -164,7 +164,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 .ac-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
 .ac-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ac-top b{font-size:15px}
 .st{font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;padding:3px 7px;border:1px solid var(--line)}
-.st-esc{background:var(--lime);color:#0b0b0c;border-color:var(--lime)}.st-mor{background:#0b0b0c;color:#fff}.st-cai{color:var(--bad)}.st-nova{color:var(--mut)}
+.st-esc{background:var(--lime);color:#0b0b0c;border-color:var(--lime)}.st-mor{background:#0b0b0c;color:#fff}.st-cai{color:var(--bad)}.st-nova{color:var(--mut)}.st-dia{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .ac-resumo{display:flex;gap:16px;font-size:12px;color:var(--mut);flex-wrap:wrap}.ac-resumo b{color:var(--txt)}
 .ac-dias{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
 .dia{display:flex;flex-direction:column;align-items:center;min-width:62px;border:1px solid var(--line);padding:6px 4px;background:var(--bg)}
@@ -595,19 +595,14 @@ async function listarAcomp() {
 function linhaAcomp(o, h) {
   const st = ST[o.acompanhar_status] || ST.nova;
   const hoje = h[h.length - 1] || {};
-  const dias = h.map((d, i) => {
-    const ant = i ? h[i - 1].criativo_ads : null;
-    const dl = ant != null ? d.criativo_ads - ant : null;
-    return `<div class="dia"><span>${d.dia_n ? d.dia_n + 'º dia' : d.dia.slice(5)}</span><b>${d.criativo_ads ?? '—'}</b><em>anúncios</em>${dl != null ? `<i class="${dl > 0 ? 'up' : dl < 0 ? 'down' : ''}">${dl > 0 ? '+' : ''}${dl}</i>` : '<i></i>'}</div>`;
-  }).join('');
+  const diaAtual = hoje.dia_n || (o.inicio ? Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5) + 1 : null);
   const bib = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&view_all_page_id=${esc(o.page_id)}`;
   return `<div class="acomp" id="ac${o.id}">
     <div class="ac-thumb">${o.imagem_url ? `<img src="${esc(o.imagem_url)}" onerror="this.remove()">` : ''}</div>
     <div class="ac-info">
-      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}</b><span class="st ${st[1]}">${st[0]}</span>${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
-      <div class="ac-resumo">${hoje.pagina_ads != null ? `<span><b>${hoje.criativo_ads ?? 0}</b> anúncios neste criativo</span><span><b>${hoje.pagina_ads}</b> ativos na página</span><span><b>${hoje.novos_24h ?? 0}</b> novos subidos hoje</span>` : '<span>Aguardando a 1ª checagem</span>'}</div>
-      <div class="ac-dias">${dias}</div>
-      <div class="ac-links">
+      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia</span>` : ''}<span class="st ${st[1]}">${st[0]}</span>${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
+      <div class="ac-resumo">${hoje.pagina_ads != null ? `<span><b>${hoje.pagina_ads}</b> ativos na página</span><span><b>${hoje.novos_24h ?? 0}</b> novos subidos hoje</span>` : '<span>Aguardando a 1ª checagem</span>'}</div>
+            <div class="ac-links">
         <a href="https://www.facebook.com/ads/library/?id=${esc(o.ad_archive_id)}" target="_blank" rel="noopener">Ver anúncio</a>
         <a href="${bib}" target="_blank" rel="noopener">Biblioteca</a>
         ${o.link_vendas ? `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener">Visitar site</a>` : ''}
