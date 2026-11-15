@@ -368,9 +368,11 @@ let view = 'ofertas', pagina = 0;
 /* ---------- auth ---------- */
 async function iniciar() {
   const { data: { session } } = await sb.auth.getSession();
+  UID = session?.user?.id || null;
   if (session) entrar(); else $('#login').classList.remove('hide');
 }
-let criando = false;
+let criando = false, UID = null;
+sb.auth.onAuthStateChange((_e, s) => { UID = s?.user?.id || null; });
 $('#l-troca').onclick = e => {
   e.preventDefault(); criando = !criando;
   $('#l-btn').textContent = criando ? 'Criar conta' : 'Entrar';
@@ -382,14 +384,15 @@ $('#f-login').onsubmit = async e => {
   const cred = { email: $('#l-email').value.trim(), password: $('#l-senha').value };
   if (criando) {
     const { error } = await sb.auth.signUp(cred);
-    if (error) { $('#l-erro').textContent = /not allowed|permitido|Database error/i.test(error.message) ? 'Esse e-mail não tem acesso' : error.message; return; }
+    if (error) { $('#l-erro').textContent = /not allowed|permitido|Database error/i.test(error.message) ? 'Não foi possível criar a conta' : error.message; return; }
   }
   const { error } = await sb.auth.signInWithPassword(cred);
   if (error) $('#l-erro').textContent = 'E-mail ou senha incorretos'; else entrar();
 };
 $('#sair').onclick = async e => { e.preventDefault(); await sb.auth.signOut(); location.reload(); };
 
-function entrar() {
+async function entrar() {
+  UID = (await sb.auth.getSession()).data.session?.user?.id || UID;
   $('#login').classList.add('hide'); $('#app').classList.remove('hide');
   $('#f-busca').value = ''; setTimeout(() => { if ($('#f-busca').value.includes('@')) { $('#f-busca').value = ''; feed(true); } }, 600);
   carregarFiltros(); trocar(location.hash.slice(1) || 'ofertas'); contadores(); ultimaExec();
@@ -511,8 +514,8 @@ async function descartar(id) {
 $('#f-add').onsubmit = async e => {
   e.preventDefault();
   const pais = $('#p-pais').value;
-  const lista = $('#p-palavra').value.split(',').map(s => s.trim()).filter(Boolean).map(palavra => ({ palavra, pais }));
-  const { error } = await sb.from('mina_palavras').upsert(lista, { onConflict: 'palavra,pais', ignoreDuplicates: true });
+  const lista = $('#p-palavra').value.split(',').map(s => s.trim()).filter(Boolean).map(palavra => ({ user_id: UID, palavra, pais }));
+  const { error } = await sb.from('mina_palavras').upsert(lista, { onConflict: 'user_id,palavra,pais', ignoreDuplicates: true });
   if (error) return toast('Erro: ' + error.message);
   $('#p-palavra').value = ''; listarPalavras(); carregarFiltros(); toast(`${lista.length} palavra(s) adicionada(s)`);
 };
@@ -544,7 +547,7 @@ async function carregarConfig() {
   $('#m-palavra').innerHTML = '<option value="">Todas as palavras ativas</option>' +
     (pals || []).map(p => `<option value="${p.id}">${esc(p.palavra)} · ${esc(p.pais)}${p.ativa ? '' : ' (pausada)'}</option>`).join('');
   $('#m-palavra').value = atual;
-  const { data: c } = await sb.from('mina_config').select('*').eq('id', 1).single();
+  const { data: c } = await sb.from('mina_config').select('*').eq('user_id', UID).maybeSingle();
   $('#c-min').value = c?.min_ads ?? 2; $('#c-dias').value = c?.max_dias ?? ''; $('#c-lim').value = c?.limite_por_palavra ?? 1000; $('#c-url').value = c?.url_modelo ?? '';
   $('#c-wpp').checked = c?.bloquear_whatsapp !== false; $('#c-bloq').value = (c?.bloqueios || []).join('\n');
   fn('status').then(s => {
@@ -559,7 +562,7 @@ $('#b-cfg').onclick = async () => {
     limite_por_palavra: +$('#c-lim').value || 1000, url_modelo: $('#c-url').value.trim() || null, updated_at: new Date().toISOString(),
     bloquear_whatsapp: $('#c-wpp').checked,
     bloqueios: [...new Set($('#c-bloq').value.split('\n').map(s => s.trim().toLowerCase()).filter(Boolean))]
-  }).eq('id', 1);
+  }).eq('user_id', UID);
   toast(error ? 'Erro: ' + error.message : 'Filtros salvos ✓');
 };
 $('#b-token').onclick = async () => {
