@@ -1062,12 +1062,31 @@ $('#sub-ir').onclick = async () => {
   for (let k = 0; k < _sub.itens.length; k++) {
     const i = _sub.itens[k], st = t => { $('#sub-st-' + k).textContent = t; };
     try {
-      st('⬆ enviando arquivo...');
-      const ext = i.f.name.split('.').pop().toLowerCase(), path = `${UID}/${Date.now()}-${i.ct}.${ext}`;
-      const up = await sb.storage.from('garimpo-midia').upload(path, i.f, { upsert: true, contentType: i.f.type || undefined });
-      if (up.error) throw new Error(up.error.message);
-      st('📤 mandando pro Facebook...');
-      const m = await fn('meta_video', { path, nome: i.ct + ' - ' + _sub.pagina.produto });
+      const ext = i.f.name.split('.').pop().toLowerCase(), ehImg = /^(jpe?g|png|webp)$/.test(ext);
+      let m, path = null;
+      if (ehImg) {
+        st('⬆ enviando imagem...'); path = `${UID}/${Date.now()}-${i.ct}.${ext}`;
+        const up = await sb.storage.from('garimpo-midia').upload(path, i.f, { upsert: true, contentType: i.f.type || undefined });
+        if (up.error) throw new Error(up.error.message);
+        m = await fn('meta_video', { path, nome: i.ct });
+      } else {
+        // vídeo vai em pedaços direto pro Facebook (sem limite de tamanho)
+        const ini = await fn('meta_up_inicio', { tamanho: i.f.size });
+        let s0 = ini.start, e0 = ini.end;
+        while (s0 < e0) {
+          st(`⬆ enviando vídeo ${Math.round(s0 / i.f.size * 100)}%`);
+          const fim = Math.min(e0, s0 + 8 * 1048576);
+          const { data: { session } } = await sb.auth.getSession();
+          const r = await fetch(`${SUPA_URL}/functions/v1/minera?action=meta_up_parte&sessao=${encodeURIComponent(ini.sessao)}&start=${s0}`, {
+            method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token, apikey: SUPA_KEY, 'Content-Type': 'application/octet-stream' }, body: i.f.slice(s0, fim) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || j.erro) throw new Error(j.erro || 'falha no envio (' + r.status + ')');
+          s0 = j.start; e0 = j.end;
+        }
+        st('📤 finalizando envio...');
+        await fn('meta_up_fim', { sessao: ini.sessao, nome: i.ct + ' - ' + _sub.pagina.produto });
+        m = { tipo: 'video', video_id: ini.video_id };
+      }
       let thumb = null;
       if (m.tipo === 'video') {
         for (let t = 0; t < 72; t++) { st('⏳ Facebook processando o vídeo...'); const e = await fn('meta_video_estado', { video_id: m.video_id });
