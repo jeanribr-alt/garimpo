@@ -168,6 +168,14 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 /* ---------- acompanhamento ---------- */
 .acomp-on{background:var(--lime)!important;color:#0b0b0c!important;border-color:var(--lime)!important}
 .acomp-lista{display:flex;flex-direction:column;gap:12px;max-width:1100px}
+.modal-fundo{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--card);border:1px solid var(--line);max-width:560px;width:100%;max-height:92vh;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:10px}
+.modal h2{margin:0;font-size:22px;letter-spacing:-.8px}.modal label{font-size:12px;color:var(--mut);margin-bottom:-6px}
+.modal input,.modal textarea{width:100%;padding:10px;border:1px solid var(--line);font:inherit}.modal textarea{min-height:70px;resize:vertical}
+.pg{border:1px solid var(--line);background:var(--card);padding:16px;display:flex;flex-direction:column;gap:8px}
+.pg-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pg-top b{font-size:17px}
+.pg-acoes{display:flex;gap:8px;flex-wrap:wrap}.pg pre{white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto;background:var(--bg);padding:10px;border:1px solid var(--line)}
+.pg .analise{font-size:13px;color:var(--mut);white-space:pre-wrap}
 .acomp{display:flex;gap:14px;background:var(--card);border:1px solid var(--borda,var(--line));border-radius:2px;padding:12px}
 .ac-thumb{width:84px;min-width:84px;height:112px;background:#000;overflow:hidden}.ac-thumb img{width:100%;height:100%;object-fit:cover}
 .ac-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
@@ -217,6 +225,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     <a class="nav" data-v="ofertas">🔥 Ofertas <b id="n-ofertas">0</b></a>
     <a class="nav" data-v="acompanhando">📡 Acompanhando <b id="n-acomp">0</b></a>
     <a class="nav" data-v="salvas">⭐ Salvas <b id="n-salvas">0</b></a>
+    <a class="nav" data-v="paginas">✍️ Páginas</a>
     <a class="nav" data-v="palavras">🔑 Palavras-chave</a>
     <a class="nav" data-v="config">⚙️ Configurações</a>
     <div class="rod">
@@ -263,6 +272,12 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
         <span class="sub" style="margin:0" id="acomp-status"></span>
       </div>
       <div id="lista-acomp" class="acomp-lista"></div>
+    </section>
+
+    <section id="v-paginas" class="hide">
+      <h1>Páginas de vendas</h1>
+      <p class="sub">Escolha uma oferta salva → "✍️ Criar página". A IA escreve a página no padrão da sua página modelo e abre no Lovable pronta pra enviar.</p>
+      <div id="lista-pag" class="acomp-lista"></div>
     </section>
 
     <section id="v-palavras" class="hide">
@@ -346,6 +361,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
         <div class="linha"><label>Bloquear anúncios que mandam pro WhatsApp</label><input id="c-wpp" type="checkbox" style="width:18px;height:18px"></div>
         <div class="linha" style="align-items:flex-start"><label>Bloquear anúncios com estas palavras<br><span style="font-size:11px">(uma por linha; vale pra texto, página e link)</span></label>
           <textarea id="c-bloq" rows="8" style="flex:1;min-width:300px;font-family:inherit;font-size:13px;background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px 11px"></textarea></div>
+        <div class="linha"><label>Página modelo das apostilas (o Lovable copia o design dela)</label><input id="c-modelo" style="flex:1;min-width:300px" placeholder="https://minhaenergiasolar.site/"></div>
         <button class="btn" id="b-cfg">Salvar filtros</button>
       </div>
 
@@ -355,6 +371,19 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
       </div>
     </section>
   </main>
+  <div id="modal-pag" class="modal-fundo hide" onclick="if(event.target===this)fecharPag()">
+    <form class="modal" id="f-pag">
+      <h2>✍️ Criar página de vendas</h2>
+      <div class="sub" id="pag-ref" style="margin:0"></div>
+      <input type="hidden" id="pg-anuncio">
+      <label>Nome da sua apostila *</label><input id="pg-produto" required placeholder="Ex: Apostila Bolsa de Crochê do Zero">
+      <label>Preço (de / por)</label><input id="pg-preco" placeholder="De R$ 59,90 por R$ 29,90">
+      <label>O que a pessoa recebe + bônus (opcional, a IA sugere se ficar vazio)</label><textarea id="pg-entrega" placeholder="Apostila PDF com 60 páginas, 20 moldes... Bônus: 10 projetos prontos"></textarea>
+      <label>Link do checkout</label><input id="pg-checkout" placeholder="https://...">
+      <label>Observações pra IA (opcional)</label><textarea id="pg-obs" placeholder="Público, ângulo, algo que não pode faltar..."></textarea>
+      <div class="pg-acoes" style="margin-top:6px"><button class="btn" type="submit" id="pg-ir">Gerar página</button><button class="btn sec" type="button" onclick="fecharPag()">Cancelar</button></div>
+    </form>
+  </div>
 </div>
 
 <script>
@@ -407,6 +436,8 @@ function trocar(v) {
   $('#v-palavras').classList.toggle('hide', v !== 'palavras');
   $('#v-acomp').classList.toggle('hide', v !== 'acompanhando');
   if (v === 'acompanhando') listarAcomp();
+  $('#v-paginas').classList.toggle('hide', v !== 'paginas');
+  if (v === 'paginas') listarPaginas();
   $('#v-config').classList.toggle('hide', v !== 'config');
   if (v === 'ofertas' || v === 'salvas') {
     $('#t-feed').textContent = v === 'salvas' ? 'Ofertas salvas' : 'Ofertas mineradas';
@@ -480,6 +511,7 @@ function card(a) {
     <div class="c-txt">${esc(a.texto || a.titulo || 'Sem descrição')}</div>
     <div class="c-acoes">
       ${a.video_url || a.imagem_url ? `<a class="btn sec sm" href="${esc(a.video_url || a.imagem_url)}" target="_blank" rel="noopener">⬇ Baixar anúncio</a>` : ''}
+      ${a.status === 'salva' ? `<button class="btn sm" onclick="abrirPag(${a.id})">✍️ Criar página</button>` : ''}
       <button class="btn sec sm" style="flex:0" title="Descartar" onclick="descartar(${a.id})">✕</button>
     </div>
     <div class="c-rod">
@@ -548,7 +580,7 @@ async function carregarConfig() {
     (pals || []).map(p => `<option value="${p.id}">${esc(p.palavra)} · ${esc(p.pais)}${p.ativa ? '' : ' (pausada)'}</option>`).join('');
   $('#m-palavra').value = atual;
   const { data: c } = await sb.from('mina_config').select('*').eq('user_id', UID).maybeSingle();
-  $('#c-min').value = c?.min_ads ?? 2; $('#c-dias').value = c?.max_dias ?? ''; $('#c-lim').value = c?.limite_por_palavra ?? 1000; $('#c-url').value = c?.url_modelo ?? '';
+  $('#c-min').value = c?.min_ads ?? 2; $('#c-dias').value = c?.max_dias ?? ''; $('#c-lim').value = c?.limite_por_palavra ?? 1000; $('#c-url').value = c?.url_modelo ?? ''; $('#c-modelo').value = c?.modelo_pagina ?? '';
   $('#c-wpp').checked = c?.bloquear_whatsapp !== false; $('#c-bloq').value = (c?.bloqueios || []).join('\n');
   fn('status').then(s => {
     $('#tk-st').textContent = s.tem_token ? 'conectado' : 'falta salvar'; $('#tk-st').className = 'pill ' + (s.tem_token ? 'concluida' : 'falhou');
@@ -559,7 +591,7 @@ async function carregarConfig() {
 $('#b-cfg').onclick = async () => {
   const { error } = await sb.from('mina_config').update({
     min_ads: +$('#c-min').value || 2, max_dias: $('#c-dias').value ? +$('#c-dias').value : null,
-    limite_por_palavra: +$('#c-lim').value || 1000, url_modelo: $('#c-url').value.trim() || null, updated_at: new Date().toISOString(),
+    limite_por_palavra: +$('#c-lim').value || 1000, url_modelo: $('#c-url').value.trim() || null, modelo_pagina: $('#c-modelo').value.trim() || 'https://minhaenergiasolar.site/', updated_at: new Date().toISOString(),
     bloquear_whatsapp: $('#c-wpp').checked,
     bloqueios: [...new Set($('#c-bloq').value.split('\n').map(s => s.trim().toLowerCase()).filter(Boolean))]
   }).eq('user_id', UID);
@@ -717,6 +749,7 @@ function linhaAcomp(o, h) {
         <a href="https://www.facebook.com/ads/library/?id=${esc(o.ad_archive_id)}" target="_blank" rel="noopener">Ver anúncio</a>
         <a href="${bib}" target="_blank" rel="noopener">Biblioteca</a>
         ${o.link_vendas ? `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener">Visitar site</a>` : ''}
+        <a href="#" onclick="abrirPag(${o.id});return false"><b>✍️ Criar página</b></a>
         ${o.acompanhar ? `<a href="#" onclick="pararAcomp('${o.ids.join(',')}');return false">Parar de acompanhar</a>` : ''}
       </div>
     </div>
@@ -757,6 +790,53 @@ async function ultimaExec() {
 /* ---------- utils ---------- */
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function dt(s) { return s ? new Date(s).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; }
+/* ---------- páginas de vendas ---------- */
+const MODELO_PADRAO = 'https://minhaenergiasolar.site/';
+async function abrirPag(id) {
+  const { data: a } = await sb.from('mina_anuncios').select('id,page_nome,nicho').eq('id', id).maybeSingle();
+  $('#f-pag').reset(); $('#pg-anuncio').value = id;
+  $('#pag-ref').textContent = a ? `Referência: ${a.page_nome || 'oferta'}${a.nicho ? ' · ' + a.nicho : ''}` : '';
+  $('#modal-pag').classList.remove('hide'); setTimeout(() => $('#pg-produto').focus(), 50);
+}
+function fecharPag() { $('#modal-pag').classList.add('hide'); }
+$('#f-pag').onsubmit = async e => {
+  e.preventDefault(); const b = $('#pg-ir'); b.disabled = true; b.textContent = 'Enviando...';
+  try {
+    await fn('criar_pagina', { anuncio_id: +$('#pg-anuncio').value, produto: $('#pg-produto').value.trim(), preco: $('#pg-preco').value.trim(),
+      entregaveis: $('#pg-entrega').value.trim(), checkout: $('#pg-checkout').value.trim(), obs: $('#pg-obs').value.trim() });
+    fecharPag(); toast('A IA está escrevendo sua página (≈1 min) ✍️'); trocar('paginas');
+  } catch (err) { toast('Erro: ' + err.message); }
+  b.disabled = false; b.textContent = 'Gerar página';
+};
+const linkLovable = p => `https://lovable.dev/#prompt=${encodeURIComponent(p.prompt || '')}&html=${encodeURIComponent(p.modelo || MODELO_PADRAO)}`;
+let tPag;
+async function listarPaginas() {
+  clearTimeout(tPag);
+  const { data } = await sb.from('mina_paginas').select('*').order('created_at', { ascending: false }).limit(50);
+  window._pags = data || [];
+  $('#lista-pag').innerHTML = !data?.length ? '<div class="vazio">Nenhuma página ainda. Vá em ⭐ Salvas e clique em "✍️ Criar página".</div>' : data.map(p => `
+    <div class="pg">
+      <div class="pg-top"><b>${esc(p.produto)}</b>${p.nicho ? `<span class="chip">${esc(p.nicho)}</span>` : ''}
+        <span class="st ${p.status === 'pronta' ? 'st-esc' : p.status === 'erro' ? 'st-cai' : 'st-nova'}">${p.status === 'pronta' ? 'pronta' : p.status === 'erro' ? 'erro' : '⏳ gerando...'}</span></div>
+      <div class="sub" style="margin:0">${p.page_nome ? 'Referência: ' + esc(p.page_nome) + ' · ' : ''}${new Date(p.created_at).toLocaleString('pt-BR')}</div>
+      ${p.status === 'erro' ? `<div style="color:var(--bad);font-size:13px">${esc(p.erro || '')}</div>` : ''}
+      ${p.status === 'pronta' ? `
+        <div class="pg-acoes">
+          <a class="btn" href="${linkLovable(p)}" target="_blank" rel="noopener">🚀 Abrir no Lovable</a>
+          <button class="btn sec" onclick="copiarPrompt(${p.id})">📋 Copiar prompt</button>
+          <button class="btn sec" onclick="apagarPag(${p.id})">✕</button>
+        </div>
+        ${p.analise ? `<details><summary>Por que a referência vende</summary><div class="analise">${esc(p.analise)}</div></details>` : ''}
+        <details><summary>Ver prompt</summary><pre>${esc(p.prompt)}</pre></details>` : p.status === 'erro' ? `<div class="pg-acoes"><button class="btn sec" onclick="apagarPag(${p.id})">✕ Apagar</button></div>` : ''}
+    </div>`).join('');
+  if ((data || []).some(p => p.status === 'gerando') && view === 'paginas') tPag = setTimeout(listarPaginas, 6000);
+}
+async function copiarPrompt(id) {
+  const p = (window._pags || []).find(x => x.id === id); if (!p) return;
+  try { await navigator.clipboard.writeText(p.prompt); toast('Prompt copiado ✓'); } catch (_) { toast('Não deu pra copiar — abra "Ver prompt"'); }
+}
+async function apagarPag(id) { await sb.from('mina_paginas').delete().eq('id', id); listarPaginas(); }
+
 function toast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
 
 /* ---------- modo claro / escuro ---------- */
