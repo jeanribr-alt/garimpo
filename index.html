@@ -346,6 +346,22 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
       </div>
 
       <div class="box">
+        <h2>📣 Facebook Ads <span id="fb-st" class="pill"></span></h2>
+        <p class="sub" style="font-size:13px;margin:0 0 10px">Pra subir campanhas direto do Garimpo. Token de usuário do sistema (Gerenciador de Negócios) com as permissões ads_management, ads_read e business_management.</p>
+        <div class="linha">
+          <input id="c-fbtoken" type="password" placeholder="Token do usuário do sistema" style="flex:1">
+          <button class="btn sec" id="b-fbtoken">Salvar token</button>
+        </div>
+        <div class="linha"><label>ID da conta de anúncios</label><input id="c-fbconta" placeholder="act_123... ou só o número" style="flex:1;min-width:220px"></div>
+        <div class="linha"><label>ID da página do Facebook</label><input id="c-fbpagina" placeholder="1234567890" style="flex:1;min-width:220px"></div>
+        <div class="linha"><label>ID da conta do Instagram (opcional)</label><input id="c-fbig" placeholder="1784..." style="flex:1;min-width:220px"></div>
+        <div class="linha"><label>ID do pixel</label><input id="c-fbpixel" placeholder="1234567890" style="flex:1;min-width:220px"></div>
+        <div class="linha"><label>Orçamento diário por campanha (R$)</label><input id="c-fborc" type="number" min="1" step="1" style="width:110px"></div>
+        <div class="linha"><button class="btn" id="b-fbsalvar">Salvar e testar conexão</button></div>
+        <p class="sub" style="font-size:12px;margin:0" id="fb-info"></p>
+      </div>
+
+      <div class="box">
         <h2>Token da Apify <span id="tk-st" class="pill"></span></h2>
         <div class="linha">
           <input id="c-token" type="password" placeholder="apify_api_..." style="flex:1">
@@ -400,6 +416,21 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
       <label>Observações pra IA (opcional)</label><textarea id="cp-obs" placeholder="Público, ângulo, homem/mulher no expert, algo que não pode faltar..."></textarea>
       <div class="pg-acoes" style="margin-top:6px"><button class="btn" type="submit" id="cp-ir">Gerar criativos</button><button class="btn sec" type="button" onclick="fecharCopy()">Cancelar</button></div>
     </form>
+  </div>
+  <div id="modal-sub" class="modal-fundo hide" onclick="if(event.target===this&&!window._subindo)fecharSub()">
+    <div class="modal" id="sub-box" style="max-width:760px">
+      <h2>🚀 Subir campanhas</h2>
+      <div class="sub" id="sub-prod" style="margin:0"></div>
+      <label>Link da página (seu domínio) *</label><input id="sub-link" placeholder="https://seudominio.com.br">
+      <label>Textos dos anúncios (do 🎬 Criativos)</label><select id="sub-copy"></select>
+      <div class="pg-acoes"><div style="flex:1"><label>Orçamento por campanha (R$/dia)</label><input id="sub-orc" type="number" min="1"></div><div style="flex:1"><label>País</label><input id="sub-pais" maxlength="2"></div></div>
+      <label>Pasta com os vídeos (CT1, CT2, CT3...)</label>
+      <div class="pg-acoes"><label class="btn sec" style="margin:0!important;color:var(--txt)!important">📁 Escolher pasta<input type="file" id="sub-pasta" webkitdirectory directory multiple hidden></label>
+        <label class="btn sec" style="margin:0!important;color:var(--txt)!important">🎞 Escolher arquivos<input type="file" id="sub-arqs" multiple accept="video/*,image/*" hidden></label></div>
+      <div id="sub-lista" class="acomp-lista"></div>
+      <div id="sub-resumo" class="veredito v-espera hide"></div>
+      <div class="pg-acoes" style="margin-top:6px"><button class="btn" id="sub-ir" disabled>Confirmar e subir</button><button class="btn sec" id="sub-fechar" onclick="fecharSub()">Fechar</button></div>
+    </div>
   </div>
   <div id="modal-pag" class="modal-fundo hide" onclick="if(event.target===this)fecharPag()">
     <form class="modal" id="f-pag">
@@ -613,6 +644,8 @@ async function carregarConfig() {
   $('#m-palavra').value = atual;
   const { data: c } = await sb.from('mina_config').select('*').eq('user_id', UID).maybeSingle();
   $('#c-min').value = c?.min_ads ?? 2; $('#c-dias').value = c?.max_dias ?? ''; $('#c-lim').value = c?.limite_por_palavra ?? 1000; $('#c-url').value = c?.url_modelo ?? ''; $('#c-modelo').value = c?.modelo_pagina ?? '';
+  $('#c-fbconta').value = c?.meta_conta ?? ''; $('#c-fbpagina').value = c?.meta_pagina ?? ''; $('#c-fbig').value = c?.meta_ig ?? ''; $('#c-fbpixel').value = c?.meta_pixel ?? ''; $('#c-fborc').value = c?.meta_orcamento ?? 30;
+  testarFb(true);
   $('#c-wpp').checked = c?.bloquear_whatsapp !== false; $('#c-bloq').value = (c?.bloqueios || []).join('\n');
   fn('status').then(s => {
     $('#tk-st').textContent = s.tem_token ? 'conectado' : 'falta salvar'; $('#tk-st').className = 'pill ' + (s.tem_token ? 'concluida' : 'falhou');
@@ -857,8 +890,10 @@ async function listarPaginas() {
           <a class="btn" href="${linkLovable(p)}" target="_blank" rel="noopener">🚀 Abrir no Lovable</a>
           <button class="btn sec" onclick="copiarPrompt(${p.id})">📋 Copiar prompt</button>
           <button class="btn sec" onclick="abrirCopy(${p.id})">🎬 Criativos</button>
+          <button class="btn" onclick="abrirSub(${p.id})">🚀 Subir campanhas</button>
           <button class="btn sec" onclick="apagarPag(${p.id})">✕</button>
         </div>
+        <div class="pg-acoes" style="align-items:center"><span class="sub" style="margin:0">🌐 Domínio:</span><input style="flex:1;min-width:200px;padding:8px;border:1px solid var(--line)" value="${esc(p.dominio || '')}" placeholder="https://seudominio.com.br" onchange="salvarDominio(${p.id},this.value)"></div>
         ${p.analise ? `<details><summary>Por que a referência vende</summary><div class="analise">${esc(p.analise)}</div></details>` : ''}
         <details><summary>Ver prompt</summary><pre>${esc(p.prompt)}</pre></details>` : p.status === 'erro' ? `<div class="pg-acoes"><button class="btn" onclick="refazerPag(${p.id})">↻ Tentar de novo</button><button class="btn sec" onclick="apagarPag(${p.id})">✕ Apagar</button></div>` : ''}
     </div>`).join('');
@@ -939,6 +974,115 @@ async function refazerCopy(id, manter) {
   } catch (e) { toast('Erro: ' + e.message); }
 }
 async function apagarCopy(id) { await sb.from('mina_copys').delete().eq('id', id); listarCopys(); }
+
+/* ---------- Facebook Ads ---------- */
+$('#b-fbtoken').onclick = async () => {
+  const t = $('#c-fbtoken').value.trim(); if (!t) return;
+  try { await fn('salvar_token', { token: t, tipo: 'meta' }); $('#c-fbtoken').value = ''; toast('Token salvo ✓'); testarFb(); } catch (e) { toast('Erro: ' + e.message); }
+};
+$('#b-fbsalvar').onclick = async () => {
+  const { error } = await sb.from('mina_config').update({ meta_conta: $('#c-fbconta').value.trim() || null, meta_pagina: $('#c-fbpagina').value.trim() || null,
+    meta_ig: $('#c-fbig').value.trim() || null, meta_pixel: $('#c-fbpixel').value.trim() || null, meta_orcamento: +$('#c-fborc').value || 30 }).eq('user_id', UID);
+  if (error) return toast('Erro: ' + error.message);
+  toast('Salvo ✓'); testarFb();
+};
+async function testarFb(silencioso) {
+  try {
+    const r = await fn('meta_status');
+    $('#fb-st').textContent = 'conectado'; $('#fb-st').className = 'pill concluida';
+    $('#fb-info').textContent = `Conta: ${r.conta?.name} (${r.conta?.currency}) · Página: ${r.pagina?.name || r.pagina?.erro} · Pixel: ${r.pixel?.name || r.pixel?.erro}`;
+    return true;
+  } catch (e) {
+    $('#fb-st').textContent = 'não conectado'; $('#fb-st').className = 'pill falhou';
+    $('#fb-info').textContent = silencioso ? '' : e.message; return false;
+  }
+}
+async function salvarDominio(id, v) {
+  v = v.trim(); if (v && !/^https?:\/\//.test(v)) v = 'https://' + v;
+  await sb.from('mina_paginas').update({ dominio: v || null }).eq('id', id);
+  const p = (window._pags || []).find(x => x.id === id); if (p) p.dominio = v; toast('Domínio salvo ✓');
+}
+let _sub = { pagina: null, itens: [], copys: [] };
+function fecharSub() { $('#modal-sub').classList.add('hide'); }
+async function abrirSub(id) {
+  const p = (window._pags || []).find(x => x.id === id); if (!p) return;
+  const { data: cfg } = await sb.from('mina_config').select('meta_orcamento,meta_conta,meta_pixel').eq('user_id', UID).maybeSingle();
+  if (!cfg?.meta_conta || !cfg?.meta_pixel) { toast('Configure o Facebook Ads em Configurações primeiro'); trocar('config'); return; }
+  const { data: cps } = await sb.from('mina_copys').select('id,tipo,qtd,resultado,created_at').eq('pagina_id', id).eq('status', 'pronta').order('created_at', { ascending: false });
+  _sub = { pagina: p, itens: [], copys: cps || [] };
+  $('#sub-prod').textContent = 'Produto: ' + p.produto;
+  $('#sub-link').value = p.dominio || ''; $('#sub-orc').value = cfg.meta_orcamento ?? 30; $('#sub-pais').value = p.pais || 'BR';
+  $('#sub-copy').innerHTML = (cps || []).map(c => `<option value="${c.id}">${TIPO_NOME[c.tipo] || c.tipo} · ${c.qtd} variações · ${new Date(c.created_at).toLocaleDateString('pt-BR')}</option>`).join('') || '<option value="">(nenhum criativo — crie em 🎬 Criativos ou escreva os textos abaixo)</option>';
+  $('#sub-lista').innerHTML = ''; $('#sub-resumo').classList.add('hide'); $('#sub-ir').disabled = true; $('#sub-ir').textContent = 'Confirmar e subir';
+  $('#sub-pasta').value = ''; $('#sub-arqs').value = '';
+  $('#modal-sub').classList.remove('hide');
+}
+function textosDaVariacao(n) {
+  const c = _sub.copys.find(x => String(x.id) === $('#sub-copy').value); if (!c) return { texto: '', titulo: '', descricao: '' };
+  const vars = lerCopy(c.resultado || '').vars; if (!vars.length) return { texto: '', titulo: '', descricao: '' };
+  const v = vars[(n - 1) % vars.length], acha = re => (v.blocos.find(b => re.test(b.titulo)) || {}).txt || '';
+  let texto = acha(/texto principal/i), titulo = acha(/^t[íi]tulo/i), descricao = acha(/descri/i);
+  if (!texto) { const t = acha(/texto do an/i); texto = t.replace(/\n?\s*(t[íi]tulo|descri[çc][ãa]o)\s*:[\s\S]*$/i, '').replace(/^texto principal\s*:\s*/i, '').trim();
+    titulo = titulo || (t.match(/t[íi]tulo\s*:\s*(.+)/i) || [])[1] || ''; descricao = descricao || (t.match(/descri[çc][ãa]o\s*:\s*(.+)/i) || [])[1] || ''; }
+  return { texto: texto.trim(), titulo: titulo.trim().slice(0, 40), descricao: descricao.trim().slice(0, 30) };
+}
+function lerArquivos(files) {
+  const itens = [...files].map(f => ({ f, m: f.name.match(/ct\s*[-_ ]?\s*(\d+)/i) })).filter(x => x.m && /\.(mp4|mov|m4v|webm|jpe?g|png|webp)$/i.test(x.f.name))
+    .map(x => ({ n: +x.m[1], ct: 'CT' + x.m[1], f: x.f })).sort((a, b) => a.n - b.n);
+  const vistos = new Set(); _sub.itens = itens.filter(i => !vistos.has(i.n) && vistos.add(i.n)).map(i => ({ ...i, ...textosDaVariacao(i.n) }));
+  montarListaSub();
+}
+$('#sub-pasta').onchange = e => lerArquivos(e.target.files);
+$('#sub-arqs').onchange = e => lerArquivos(e.target.files);
+$('#sub-copy').onchange = () => { _sub.itens = _sub.itens.map(i => ({ ...i, ...textosDaVariacao(i.n) })); montarListaSub(); };
+function montarListaSub() {
+  const it = _sub.itens;
+  $('#sub-lista').innerHTML = !it.length ? '<div class="vazio" style="padding:20px">Nenhum arquivo com nome CT1, CT2... encontrado.</div>' : it.map((i, k) => `
+    <div class="pg" style="padding:12px" id="sub-${k}">
+      <div class="pg-top"><b>${i.ct}</b><span class="chip">${esc(i.f.name)}</span><span class="chip">${(i.f.size / 1048576).toFixed(1)} MB</span><span class="st st-nova" id="sub-st-${k}">pronto pra subir</span></div>
+      <label>Texto principal</label><textarea style="width:100%;min-height:70px;padding:8px;border:1px solid var(--line)" oninput="_sub.itens[${k}].texto=this.value">${esc(i.texto)}</textarea>
+      <div class="pg-acoes"><input style="flex:2;padding:8px;border:1px solid var(--line)" maxlength="40" placeholder="Título" value="${esc(i.titulo)}" oninput="_sub.itens[${k}].titulo=this.value">
+        <input style="flex:1;padding:8px;border:1px solid var(--line)" maxlength="30" placeholder="Descrição" value="${esc(i.descricao)}" oninput="_sub.itens[${k}].descricao=this.value"></div>
+    </div>`).join('');
+  const orc = +$('#sub-orc').value || 30, n = it.length;
+  const hoje5 = new Date(); hoje5.setHours(5, 0, 0, 0); const ini = hoje5.getTime() > Date.now() + 600000 ? hoje5 : new Date(hoje5.getTime() + 864e5);
+  $('#sub-resumo').innerHTML = n ? `<b>${n} campanha${n > 1 ? 's' : ''} × R$ ${orc.toFixed(2).replace('.', ',')} = R$ ${(n * orc).toFixed(2).replace('.', ',')}/dia</b> · Advantage+ vendas (Compra) · botão Saiba mais · IA dos anúncios desligada · começam ${ini.toLocaleDateString('pt-BR')} às 05:00` : '';
+  $('#sub-resumo').classList.toggle('hide', !n); $('#sub-ir').disabled = !n;
+}
+$('#sub-orc').oninput = montarListaSub;
+const esperar = ms => new Promise(r => setTimeout(r, ms));
+$('#sub-ir').onclick = async () => {
+  let link = $('#sub-link').value.trim(); if (link && !/^https?:\/\//.test(link)) link = 'https://' + link;
+  if (!link) return toast('Coloque o link da página (seu domínio)');
+  if (_sub.itens.some(i => !i.texto.trim())) return toast('Tem anúncio sem texto principal');
+  if (!confirm(`Subir ${_sub.itens.length} campanha(s) no Facebook, com R$ ${$('#sub-orc').value}/dia cada, começando às 05:00?`)) return;
+  if (link !== (_sub.pagina.dominio || '')) await salvarDominio(_sub.pagina.id, link);
+  window._subindo = true; $('#sub-ir').disabled = true; $('#sub-ir').textContent = 'Subindo...'; $('#sub-fechar').disabled = true;
+  let ok = 0;
+  for (let k = 0; k < _sub.itens.length; k++) {
+    const i = _sub.itens[k], st = t => { $('#sub-st-' + k).textContent = t; };
+    try {
+      st('⬆ enviando arquivo...');
+      const ext = i.f.name.split('.').pop().toLowerCase(), path = `${UID}/${Date.now()}-${i.ct}.${ext}`;
+      const up = await sb.storage.from('garimpo-midia').upload(path, i.f, { upsert: true, contentType: i.f.type || undefined });
+      if (up.error) throw new Error(up.error.message);
+      st('📤 mandando pro Facebook...');
+      const m = await fn('meta_video', { path, nome: i.ct + ' - ' + _sub.pagina.produto });
+      let thumb = null;
+      if (m.tipo === 'video') {
+        for (let t = 0; t < 72; t++) { st('⏳ Facebook processando o vídeo...'); const e = await fn('meta_video_estado', { video_id: m.video_id });
+          if (e.erro) throw new Error('o Facebook não aceitou o vídeo'); if (e.pronto) { thumb = e.thumb; break; } await esperar(5000); }
+        if (!thumb) throw new Error('o vídeo demorou demais pra processar');
+      }
+      st('🛠 criando campanha...');
+      await fn('meta_campanha', { ct: i.ct, pagina_id: _sub.pagina.id, arquivo: i.f.name, path, video_id: m.video_id, image_hash: m.image_hash, thumb,
+        texto: i.texto, titulo: i.titulo, descricao: i.descricao, link, orcamento: +$('#sub-orc').value || 30, pais: $('#sub-pais').value || 'BR' });
+      st('✅ campanha criada'); $('#sub-st-' + k).className = 'st st-esc'; ok++;
+    } catch (e) { st('❌ ' + e.message); $('#sub-st-' + k).className = 'st st-cai'; }
+  }
+  window._subindo = false; $('#sub-fechar').disabled = false; $('#sub-ir').textContent = `${ok}/${_sub.itens.length} subidas`;
+  toast(`${ok} campanha(s) criada(s) — começam às 05:00 ✓`);
+};
 
 function toast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
 
