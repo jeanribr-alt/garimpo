@@ -257,7 +257,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     <!-- PALAVRAS -->
     <section id="v-acomp" class="hide">
       <h1>Acompanhando</h1>
-      <p class="sub">Ofertas novas vigiadas dia a dia por 7 dias. Checagem automática todo dia às 13h.</p>
+      <p class="sub">Suas ofertas salvas, vigiadas dia a dia. Checagem automática todo dia às 13h.</p>
       <div class="filtros">
         <button class="btn" id="b-checar">📡 Checar agora</button>
         <span class="sub" style="margin:0" id="acomp-status"></span>
@@ -480,7 +480,6 @@ function card(a) {
     <div class="c-txt">${esc(a.texto || a.titulo || 'Sem descrição')}</div>
     <div class="c-acoes">
       ${a.video_url || a.imagem_url ? `<a class="btn sec sm" href="${esc(a.video_url || a.imagem_url)}" target="_blank" rel="noopener">⬇ Baixar anúncio</a>` : ''}
-      <button class="btn sec sm ${a.acompanhar ? 'acomp-on' : ''}" style="flex:0" title="Acompanhar dia a dia" onclick="alternarAcomp(${a.id},this)">📡</button>
       <button class="btn sec sm" style="flex:0" title="Descartar" onclick="descartar(${a.id})">✕</button>
     </div>
     <div class="c-rod">
@@ -503,6 +502,7 @@ async function salvar(id, b) {
   await sb.from('mina_anuncios').update({ status: novo }).eq('id', id);
   b.classList.toggle('salvo'); b.textContent = novo === 'salva' ? '✓ Salva' : '☆ Salvar';
   if (view === 'salvas' && novo === 'nova') $('#c' + id).remove();
+  toast(novo === 'salva' ? 'Salva ✓ · entrou no 📡 Acompanhando' : 'Removida das salvas');
   contadores();
 }
 async function descartar(id) {
@@ -608,8 +608,8 @@ const ST = {
   caindo: ['📉 Caindo', 'st-cai'], morreu: ['💀 Morreu', 'st-mor'], encerrado: ['Encerrado (7 dias)', 'st-enc']
 };
 async function listarAcomp() {
-  const { data: ofs } = await sb.from('mina_anuncios').select('*').not('acompanhar_desde', 'is', null)
-    .gte('acompanhar_desde', hojeBR(-8)).order('acompanhar', { ascending: false }).order('qtd_ads', { ascending: false }).limit(200);
+  const { data: ofs } = await sb.from('mina_anuncios').select('*').eq('status', 'salva')
+   .order('acompanhar', { ascending: false }).order('qtd_ads', { ascending: false }).limit(200);
   const ids = (ofs || []).map(o => o.id);
   const { data: hist } = ids.length ? await sb.from('mina_acompanhamento').select('*').in('anuncio_id', ids).order('dia') : { data: [] };
   const porId = {}; (hist || []).forEach(h => (porId[h.anuncio_id] = porId[h.anuncio_id] || []).push(h));
