@@ -171,7 +171,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 .modal-fundo{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal{background:var(--card);border:1px solid var(--line);max-width:560px;width:100%;max-height:92vh;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:10px}
 .modal h2{margin:0;font-size:22px;letter-spacing:-.8px}.modal label{font-size:12px;color:var(--mut);margin-bottom:-6px}
-.modal input,.modal textarea{width:100%;padding:10px;border:1px solid var(--line);font:inherit}.modal textarea{min-height:70px;resize:vertical}
+.modal input,.modal textarea,.modal select{width:100%;padding:10px;border:1px solid var(--line);font:inherit}.modal textarea{min-height:70px;resize:vertical}
 .pg{border:1px solid var(--line);background:var(--card);padding:16px;display:flex;flex-direction:column;gap:8px}
 .pg-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pg-top b{font-size:17px}
 .pg-acoes{display:flex;gap:8px;flex-wrap:wrap}.pg pre{white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto;background:var(--bg);padding:10px;border:1px solid var(--line)}
@@ -288,7 +288,8 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 
     <section id="v-copys" class="hide">
       <h1>Criativos</h1>
-      <p class="sub">Escolha uma oferta salva → "🎬 Criativos". A IA escreve roteiros, falas, prompts e textos de anúncio prontos pra copiar.</p>
+      <p class="sub">Escolha um dos produtos que você está montando em ✍️ Páginas. A IA escreve roteiros, falas, prompts e textos de anúncio coerentes com a sua página.</p>
+      <div class="filtros"><button class="btn" onclick="abrirCopy()">🎬 Novo criativo</button></div>
       <div id="lista-copy" class="acomp-lista"></div>
     </section>
 
@@ -387,9 +388,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     <form class="modal" id="f-copy">
       <h2>🎬 Criar criativos</h2>
       <div class="sub" id="copy-ref" style="margin:0"></div>
-      <input type="hidden" id="cp-anuncio">
-      <label>Nome do seu produto *</label><input id="cp-produto" required placeholder="Ex: Apostila Farol Premium 2.0">
-      <label>Preço (opcional)</label><input id="cp-preco" placeholder="R$ 29,90">
+      <label>Produto (das suas páginas) *</label><select id="cp-pagina" required></select>
       <label>Tipo de criativo</label>
       <div class="tipos">
         <label><input type="radio" name="cp-tipo" value="expert_ia" checked><span>🤖 <b>Expert de IA</b><br>fala + prompt da imagem (ChatGPT) + prompt do vídeo (Higgsfield)</span></label>
@@ -544,7 +543,7 @@ function card(a) {
     <div class="c-txt">${esc(a.texto || a.titulo || 'Sem descrição')}</div>
     <div class="c-acoes">
       ${a.video_url || a.imagem_url ? `<a class="btn sec sm" href="${esc(a.video_url || a.imagem_url)}" target="_blank" rel="noopener">⬇ Baixar anúncio</a>` : ''}
-      ${a.status === 'salva' ? `<button class="btn sm" onclick="abrirPag(${a.id})">✍️ Página</button><button class="btn sm" onclick="abrirCopy(${a.id})">🎬 Criativos</button>` : ''}
+      ${a.status === 'salva' ? `<button class="btn sm" onclick="abrirPag(${a.id})">✍️ Criar página</button>` : ''}
       <button class="btn sec sm" style="flex:0" title="Descartar" onclick="descartar(${a.id})">✕</button>
     </div>
     <div class="c-rod">
@@ -783,7 +782,6 @@ function linhaAcomp(o, h) {
         <a href="${bib}" target="_blank" rel="noopener">Biblioteca</a>
         ${o.link_vendas ? `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener">Visitar site</a>` : ''}
         <a href="#" onclick="abrirPag(${o.id});return false"><b>✍️ Criar página</b></a>
-        <a href="#" onclick="abrirCopy(${o.id});return false"><b>🎬 Criativos</b></a>
         ${o.acompanhar ? `<a href="#" onclick="pararAcomp('${o.ids.join(',')}');return false">Parar de acompanhar</a>` : ''}
       </div>
     </div>
@@ -858,6 +856,7 @@ async function listarPaginas() {
         <div class="pg-acoes">
           <a class="btn" href="${linkLovable(p)}" target="_blank" rel="noopener">🚀 Abrir no Lovable</a>
           <button class="btn sec" onclick="copiarPrompt(${p.id})">📋 Copiar prompt</button>
+          <button class="btn sec" onclick="abrirCopy(${p.id})">🎬 Criativos</button>
           <button class="btn sec" onclick="apagarPag(${p.id})">✕</button>
         </div>
         ${p.analise ? `<details><summary>Por que a referência vende</summary><div class="analise">${esc(p.analise)}</div></details>` : ''}
@@ -880,18 +879,20 @@ async function apagarPag(id) { await sb.from('mina_paginas').delete().eq('id', i
 
 /* ---------- criativos (agente de copy) ---------- */
 const TIPO_NOME = { expert_ia: '🤖 Expert de IA', tiktok_narracao: '📱 TikTok com narração', imagem: '🖼 Imagem estática', ugc_depoimento: '🤳 UGC gravado' };
-async function abrirCopy(id) {
-  const { data: a } = await sb.from('mina_anuncios').select('id,page_nome,nicho').eq('id', id).maybeSingle();
-  $('#f-copy').reset(); $('#cp-anuncio').value = id;
-  const ult = (window._pags || []).find(p => p.anuncio_id === id); if (ult) $('#cp-produto').value = ult.produto || '';
-  $('#copy-ref').textContent = a ? `Referência: ${a.page_nome || 'oferta'}${a.nicho ? ' · ' + a.nicho : ''}` : '';
-  $('#modal-copy').classList.remove('hide'); setTimeout(() => $('#cp-produto').focus(), 50);
+async function abrirCopy(paginaId) {
+  const { data } = await sb.from('mina_paginas').select('id,produto,nicho,page_nome,status').eq('status', 'pronta').order('created_at', { ascending: false }).limit(100);
+  if (!data?.length) { toast('Crie uma página primeiro em ✍️ Páginas'); trocar('paginas'); return; }
+  $('#f-copy').reset();
+  $('#cp-pagina').innerHTML = data.map(p => `<option value="${p.id}">${esc(p.produto)}${p.nicho ? ' · ' + esc(p.nicho) : ''}</option>`).join('');
+  if (paginaId) $('#cp-pagina').value = paginaId;
+  $('#copy-ref').textContent = '';
+  $('#modal-copy').classList.remove('hide');
 }
 function fecharCopy() { $('#modal-copy').classList.add('hide'); }
 $('#f-copy').onsubmit = async e => {
   e.preventDefault(); const b = $('#cp-ir'); b.disabled = true; b.textContent = 'Enviando...';
   try {
-    await fn('criar_copy', { anuncio_id: +$('#cp-anuncio').value, produto: $('#cp-produto').value.trim(), preco: $('#cp-preco').value.trim(),
+    await fn('criar_copy', { pagina_id: +$('#cp-pagina').value,
       tipo: document.querySelector('input[name="cp-tipo"]:checked').value, qtd: +$('#cp-qtd').value || 3, obs: $('#cp-obs').value.trim() });
     fecharCopy(); toast('A IA está escrevendo seus criativos (≈1 min) 🎬'); trocar('copys');
   } catch (err) { toast('Erro: ' + err.message); }
@@ -932,7 +933,7 @@ async function copiarBloco(i) { try { await navigator.clipboard.writeText(window
 async function refazerCopy(id, manter) {
   const c = (window._copys || []).find(x => x.id === id); if (!c) return;
   try {
-    await fn('criar_copy', { anuncio_id: c.anuncio_id, produto: c.produto, preco: c.preco, tipo: c.tipo, qtd: c.qtd, obs: c.obs });
+    await fn('criar_copy', { pagina_id: c.pagina_id, anuncio_id: c.anuncio_id, produto: c.produto, preco: c.preco, tipo: c.tipo, qtd: c.qtd, obs: c.obs });
     if (!manter) await sb.from('mina_copys').delete().eq('id', id);
     toast('Gerando 🎬'); listarCopys();
   } catch (e) { toast('Erro: ' + e.message); }
