@@ -827,13 +827,20 @@ async function listarPaginas() {
           <button class="btn sec" onclick="apagarPag(${p.id})">✕</button>
         </div>
         ${p.analise ? `<details><summary>Por que a referência vende</summary><div class="analise">${esc(p.analise)}</div></details>` : ''}
-        <details><summary>Ver prompt</summary><pre>${esc(p.prompt)}</pre></details>` : p.status === 'erro' ? `<div class="pg-acoes"><button class="btn sec" onclick="apagarPag(${p.id})">✕ Apagar</button></div>` : ''}
+        <details><summary>Ver prompt</summary><pre>${esc(p.prompt)}</pre></details>` : p.status === 'erro' ? `<div class="pg-acoes"><button class="btn" onclick="refazerPag(${p.id})">↻ Tentar de novo</button><button class="btn sec" onclick="apagarPag(${p.id})">✕ Apagar</button></div>` : ''}
     </div>`).join('');
   if ((data || []).some(p => p.status === 'gerando') && view === 'paginas') tPag = setTimeout(listarPaginas, 6000);
 }
 async function copiarPrompt(id) {
   const p = (window._pags || []).find(x => x.id === id); if (!p) return;
   try { await navigator.clipboard.writeText(p.prompt); toast('Prompt copiado ✓'); } catch (_) { toast('Não deu pra copiar — abra "Ver prompt"'); }
+}
+async function refazerPag(id) {
+  const p = (window._pags || []).find(x => x.id === id); if (!p) return;
+  try {
+    await fn('criar_pagina', { anuncio_id: p.anuncio_id, produto: p.produto, preco: p.preco, entregaveis: p.entregaveis, checkout: p.checkout, obs: p.obs });
+    await sb.from('mina_paginas').delete().eq('id', id); toast('Gerando de novo ✍️'); listarPaginas();
+  } catch (e) { toast('Erro: ' + e.message); }
 }
 async function apagarPag(id) { await sb.from('mina_paginas').delete().eq('id', id); listarPaginas(); }
 
