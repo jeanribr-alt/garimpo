@@ -176,6 +176,11 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 .pg-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pg-top b{font-size:17px}
 .pg-acoes{display:flex;gap:8px;flex-wrap:wrap}.pg pre{white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto;background:var(--bg);padding:10px;border:1px solid var(--line)}
 .pg .analise{font-size:13px;color:var(--mut);white-space:pre-wrap}
+.cp-var{border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}.cp-var h3{margin:0;font-size:15px}
+.cp-bl{display:flex;flex-direction:column;gap:6px}.cp-bl-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.cp-bl-top b{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut)}
+.cp-bl pre{white-space:pre-wrap;font:inherit;font-size:14px;margin:0;background:var(--card);border:1px solid var(--line);padding:10px}
+.tipos{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tipos label{border:1px solid var(--line);padding:10px;cursor:pointer;margin:0!important;color:var(--txt)!important;font-size:13px!important;display:flex;gap:8px;align-items:flex-start}
+.tipos label:has(input:checked){border-color:var(--ink);background:var(--lime);color:#0b0b0c!important}.tipos input{width:auto!important;margin-top:2px}
 .acomp{display:flex;gap:14px;background:var(--card);border:1px solid var(--borda,var(--line));border-radius:2px;padding:12px}
 .ac-thumb{width:84px;min-width:84px;height:112px;background:#000;overflow:hidden}.ac-thumb img{width:100%;height:100%;object-fit:cover}
 .ac-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
@@ -226,6 +231,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     <a class="nav" data-v="acompanhando">📡 Acompanhando <b id="n-acomp">0</b></a>
     <a class="nav" data-v="salvas">⭐ Salvas <b id="n-salvas">0</b></a>
     <a class="nav" data-v="paginas">✍️ Páginas</a>
+    <a class="nav" data-v="copys">🎬 Criativos</a>
     <a class="nav" data-v="palavras">🔑 Palavras-chave</a>
     <a class="nav" data-v="config">⚙️ Configurações</a>
     <div class="rod">
@@ -278,6 +284,12 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
       <h1>Páginas de vendas</h1>
       <p class="sub">Escolha uma oferta salva → "✍️ Criar página". A IA escreve a página no padrão da sua página modelo e abre no Lovable pronta pra enviar.</p>
       <div id="lista-pag" class="acomp-lista"></div>
+    </section>
+
+    <section id="v-copys" class="hide">
+      <h1>Criativos</h1>
+      <p class="sub">Escolha uma oferta salva → "🎬 Criativos". A IA escreve roteiros, falas, prompts e textos de anúncio prontos pra copiar.</p>
+      <div id="lista-copy" class="acomp-lista"></div>
     </section>
 
     <section id="v-palavras" class="hide">
@@ -371,6 +383,25 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
       </div>
     </section>
   </main>
+  <div id="modal-copy" class="modal-fundo hide" onclick="if(event.target===this)fecharCopy()">
+    <form class="modal" id="f-copy">
+      <h2>🎬 Criar criativos</h2>
+      <div class="sub" id="copy-ref" style="margin:0"></div>
+      <input type="hidden" id="cp-anuncio">
+      <label>Nome do seu produto *</label><input id="cp-produto" required placeholder="Ex: Apostila Farol Premium 2.0">
+      <label>Preço (opcional)</label><input id="cp-preco" placeholder="R$ 29,90">
+      <label>Tipo de criativo</label>
+      <div class="tipos">
+        <label><input type="radio" name="cp-tipo" value="expert_ia" checked><span>🤖 <b>Expert de IA</b><br>fala + prompt da imagem (ChatGPT) + prompt do vídeo (Higgsfield)</span></label>
+        <label><input type="radio" name="cp-tipo" value="tiktok_narracao"><span>📱 <b>TikTok com narração</b><br>locução em off + cenas + direção de voz</span></label>
+        <label><input type="radio" name="cp-tipo" value="imagem"><span>🖼 <b>Imagem estática</b><br>textos da arte + prompt da imagem</span></label>
+        <label><input type="radio" name="cp-tipo" value="ugc_depoimento"><span>🤳 <b>UGC gravado</b><br>roteiro pra pessoa real gravar no celular</span></label>
+      </div>
+      <label>Quantas variações</label><input id="cp-qtd" type="number" min="1" max="5" value="3">
+      <label>Observações pra IA (opcional)</label><textarea id="cp-obs" placeholder="Público, ângulo, homem/mulher no expert, algo que não pode faltar..."></textarea>
+      <div class="pg-acoes" style="margin-top:6px"><button class="btn" type="submit" id="cp-ir">Gerar criativos</button><button class="btn sec" type="button" onclick="fecharCopy()">Cancelar</button></div>
+    </form>
+  </div>
   <div id="modal-pag" class="modal-fundo hide" onclick="if(event.target===this)fecharPag()">
     <form class="modal" id="f-pag">
       <h2>✍️ Criar página de vendas</h2>
@@ -438,6 +469,8 @@ function trocar(v) {
   if (v === 'acompanhando') listarAcomp();
   $('#v-paginas').classList.toggle('hide', v !== 'paginas');
   if (v === 'paginas') listarPaginas();
+  $('#v-copys').classList.toggle('hide', v !== 'copys');
+  if (v === 'copys') listarCopys();
   $('#v-config').classList.toggle('hide', v !== 'config');
   if (v === 'ofertas' || v === 'salvas') {
     $('#t-feed').textContent = v === 'salvas' ? 'Ofertas salvas' : 'Ofertas mineradas';
@@ -511,7 +544,7 @@ function card(a) {
     <div class="c-txt">${esc(a.texto || a.titulo || 'Sem descrição')}</div>
     <div class="c-acoes">
       ${a.video_url || a.imagem_url ? `<a class="btn sec sm" href="${esc(a.video_url || a.imagem_url)}" target="_blank" rel="noopener">⬇ Baixar anúncio</a>` : ''}
-      ${a.status === 'salva' ? `<button class="btn sm" onclick="abrirPag(${a.id})">✍️ Criar página</button>` : ''}
+      ${a.status === 'salva' ? `<button class="btn sm" onclick="abrirPag(${a.id})">✍️ Página</button><button class="btn sm" onclick="abrirCopy(${a.id})">🎬 Criativos</button>` : ''}
       <button class="btn sec sm" style="flex:0" title="Descartar" onclick="descartar(${a.id})">✕</button>
     </div>
     <div class="c-rod">
@@ -750,6 +783,7 @@ function linhaAcomp(o, h) {
         <a href="${bib}" target="_blank" rel="noopener">Biblioteca</a>
         ${o.link_vendas ? `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener">Visitar site</a>` : ''}
         <a href="#" onclick="abrirPag(${o.id});return false"><b>✍️ Criar página</b></a>
+        <a href="#" onclick="abrirCopy(${o.id});return false"><b>🎬 Criativos</b></a>
         ${o.acompanhar ? `<a href="#" onclick="pararAcomp('${o.ids.join(',')}');return false">Parar de acompanhar</a>` : ''}
       </div>
     </div>
@@ -843,6 +877,67 @@ async function refazerPag(id) {
   } catch (e) { toast('Erro: ' + e.message); }
 }
 async function apagarPag(id) { await sb.from('mina_paginas').delete().eq('id', id); listarPaginas(); }
+
+/* ---------- criativos (agente de copy) ---------- */
+const TIPO_NOME = { expert_ia: '🤖 Expert de IA', tiktok_narracao: '📱 TikTok com narração', imagem: '🖼 Imagem estática', ugc_depoimento: '🤳 UGC gravado' };
+async function abrirCopy(id) {
+  const { data: a } = await sb.from('mina_anuncios').select('id,page_nome,nicho').eq('id', id).maybeSingle();
+  $('#f-copy').reset(); $('#cp-anuncio').value = id;
+  const ult = (window._pags || []).find(p => p.anuncio_id === id); if (ult) $('#cp-produto').value = ult.produto || '';
+  $('#copy-ref').textContent = a ? `Referência: ${a.page_nome || 'oferta'}${a.nicho ? ' · ' + a.nicho : ''}` : '';
+  $('#modal-copy').classList.remove('hide'); setTimeout(() => $('#cp-produto').focus(), 50);
+}
+function fecharCopy() { $('#modal-copy').classList.add('hide'); }
+$('#f-copy').onsubmit = async e => {
+  e.preventDefault(); const b = $('#cp-ir'); b.disabled = true; b.textContent = 'Enviando...';
+  try {
+    await fn('criar_copy', { anuncio_id: +$('#cp-anuncio').value, produto: $('#cp-produto').value.trim(), preco: $('#cp-preco').value.trim(),
+      tipo: document.querySelector('input[name="cp-tipo"]:checked').value, qtd: +$('#cp-qtd').value || 3, obs: $('#cp-obs').value.trim() });
+    fecharCopy(); toast('A IA está escrevendo seus criativos (≈1 min) 🎬'); trocar('copys');
+  } catch (err) { toast('Erro: ' + err.message); }
+  b.disabled = false; b.textContent = 'Gerar criativos';
+};
+function lerCopy(txt) {
+  const est = (txt.match(/<estrategia>([\s\S]*?)<\/estrategia>/) || [])[1] || '';
+  const vars = [...txt.matchAll(/<var titulo="([^"]*)">([\s\S]*?)<\/var>/g)].map(m => ({
+    titulo: m[1], blocos: [...m[2].matchAll(/<bloco titulo="([^"]*)">([\s\S]*?)<\/bloco>/g)].map(b => ({ titulo: b[1], txt: b[2].trim() })) }));
+  return { est: est.trim(), vars };
+}
+let tCopy;
+async function listarCopys() {
+  clearTimeout(tCopy);
+  const { data } = await sb.from('mina_copys').select('*').order('created_at', { ascending: false }).limit(40);
+  window._copys = data || []; window._blocos = [];
+  $('#lista-copy').innerHTML = !data?.length ? '<div class="vazio">Nenhum criativo ainda. Vá em ⭐ Salvas e clique em "🎬 Criativos".</div>' : data.map(c => {
+    let corpo = '';
+    if (c.status === 'pronta') {
+      const r = lerCopy(c.resultado || '');
+      corpo = (r.est ? `<div class="analise">${esc(r.est)}</div>` : '') + r.vars.map(v => `<details class="cp-var"><summary><h3 style="display:inline">${esc(v.titulo)}</h3></summary>${v.blocos.map(b => {
+        const i = window._blocos.push(b.txt) - 1;
+        return `<div class="cp-bl"><div class="cp-bl-top"><b>${esc(b.titulo)}</b><button class="btn sec sm" onclick="copiarBloco(${i})">📋 Copiar</button></div><pre>${esc(b.txt)}</pre></div>`;
+      }).join('')}</details>`).join('');
+    }
+    return `<div class="pg">
+      <div class="pg-top"><b>${esc(c.produto)}</b><span class="chip">${TIPO_NOME[c.tipo] || c.tipo}</span>${c.nicho ? `<span class="chip">${esc(c.nicho)}</span>` : ''}
+        <span class="st ${c.status === 'pronta' ? 'st-esc' : c.status === 'erro' ? 'st-cai' : 'st-nova'}">${c.status === 'pronta' ? c.qtd + ' variações' : c.status === 'erro' ? 'erro' : '⏳ gerando...'}</span></div>
+      <div class="sub" style="margin:0">${c.page_nome ? 'Referência: ' + esc(c.page_nome) + ' · ' : ''}${new Date(c.created_at).toLocaleString('pt-BR')}</div>
+      ${c.status === 'erro' ? `<div style="color:var(--bad);font-size:13px">${esc(c.erro || '')}</div>` : ''}
+      ${corpo}
+      <div class="pg-acoes">${c.status === 'erro' ? `<button class="btn" onclick="refazerCopy(${c.id})">↻ Tentar de novo</button>` : ''}${c.status === 'pronta' ? `<button class="btn sec sm" onclick="refazerCopy(${c.id},true)">↻ Gerar mais</button>` : ''}<button class="btn sec sm" onclick="apagarCopy(${c.id})">✕</button></div>
+    </div>`;
+  }).join('');
+  if ((data || []).some(c => c.status === 'gerando') && view === 'copys') tCopy = setTimeout(listarCopys, 6000);
+}
+async function copiarBloco(i) { try { await navigator.clipboard.writeText(window._blocos[i]); toast('Copiado ✓'); } catch (_) { toast('Não deu pra copiar'); } }
+async function refazerCopy(id, manter) {
+  const c = (window._copys || []).find(x => x.id === id); if (!c) return;
+  try {
+    await fn('criar_copy', { anuncio_id: c.anuncio_id, produto: c.produto, preco: c.preco, tipo: c.tipo, qtd: c.qtd, obs: c.obs });
+    if (!manter) await sb.from('mina_copys').delete().eq('id', id);
+    toast('Gerando 🎬'); listarCopys();
+  } catch (e) { toast('Erro: ' + e.message); }
+}
+async function apagarCopy(id) { await sb.from('mina_copys').delete().eq('id', id); listarCopys(); }
 
 function toast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
 
