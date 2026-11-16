@@ -295,7 +295,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 
     <section id="v-palavras" class="hide">
       <h1>Palavras-chave</h1>
-      <p class="sub">O robô busca cada uma na Biblioteca de Anúncios todo dia às 6h</p>
+      <p class="sub">O robô busca cada uma na Biblioteca de Anúncios quando você minera</p>
       <div class="box">
         <form class="linha" id="f-add">
           <input id="p-palavra" placeholder="Ex: energia solar, apostila, curso de..." style="flex:1;min-width:220px" required>
@@ -306,6 +306,17 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
           <button class="btn">+ Adicionar</button>
         </form>
         <p class="sub" style="font-size:12px;margin:0">Dica: cole várias separadas por vírgula.</p>
+      </div>
+      <div class="box">
+        <b>🎯 Seletor de nicho</b>
+        <p class="sub" style="font-size:12px;margin:4px 0 8px">Palavras que aparecem nos anúncios de low ticket (apostila, guia, curso barato). Escolha o nicho, marque e adicione.</p>
+        <div class="linha">
+          <select id="sel-nicho" style="flex:1;min-width:200px"></select>
+          <select id="sel-lingua"><option value="pt">🇧🇷 Português (BR)</option><option value="es">🌎 Espanhol (LATAM)</option></select>
+          <select id="sel-pais"></select>
+        </div>
+        <div id="sel-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0"></div>
+        <div class="linha"><button class="btn sec" type="button" onclick="selTodas(true)">Marcar todas</button><button class="btn sec" type="button" onclick="selTodas(false)">Desmarcar</button><button class="btn" type="button" id="sel-add">+ Adicionar marcadas</button></div>
       </div>
       <div class="box">
         <table><thead><tr><th>Palavra</th><th>País</th><th>Ativa</th><th>Ofertas</th><th></th></tr></thead><tbody id="t-palavras"></tbody></table>
@@ -607,6 +618,73 @@ async function descartar(id) {
   $('#c' + id).remove(); contadores();
 }
 
+
+/* ---------- seletor de nicho ---------- */
+const NICHOS = {
+  'Mercado low ticket (geral)': {
+    pt: ['apostila digital','acesso imediato','por apenas R$','pagamento único','receba no seu e-mail','apostila completa','guia completo','passo a passo completo','e-book','pdf completo','material digital','kit digital','método passo a passo','aprenda do zero','mesmo sem experiência','oferta por tempo limitado','de R$ 97 por','acesso vitalício'],
+    es: ['acceso inmediato','pago único','solo por','guía paso a paso','guía completa','ebook','descarga inmediata','material digital','kit digital','aprende desde cero','sin experiencia','acceso de por vida','oferta por tiempo limitado','manual completo','curso completo','método paso a paso'] },
+  'Casa, reforma e faça você mesmo': {
+    pt: ['energia solar off grid','sistema off grid','energia solar caseira','apostila de pedreiro','curso de pedreiro','marcenaria para iniciantes','projetos de marcenaria','móveis de pallet','piscina de pallet','elétrica residencial','apostila de eletricista','encanador iniciante','faça você mesmo','reforma gastando pouco','casa sustentável','cisterna caseira'],
+    es: ['energía solar casera','sistema off grid','panel solar casero','carpintería para principiantes','planos de carpintería','muebles de palet','electricidad residencial','plomería básica','hazlo tú mismo','construcción paso a paso','albañilería','casa autosuficiente'] },
+  'Horta, rural e agro': {
+    pt: ['projetos de horta','horta em casa','horta vertical','hidroponia caseira','compostagem','galinha caipira','criação de galinhas','criação de tilápia','apicultura','plantas medicinais','cultivo de cogumelos','agrofloresta','sítio produtivo'],
+    es: ['huerto en casa','huerto urbano','hidroponía casera','compostaje','gallinas ponedoras','cría de gallinas','cría de tilapia','apicultura','plantas medicinales','cultivo de hongos','autosuficiencia'] },
+  'Carro, moto e mecânica': {
+    pt: ['restauração de farol','polimento automotivo','estética automotiva','mecânica de moto','manutenção de moto','mecânica básica','apostila de mecânica','martelinho de ouro','funilaria e pintura','injeção eletrônica','manutenção de bicicleta','bike elétrica','scanner automotivo'],
+    es: ['restauración de faros','pulido automotriz','detallado automotriz','mecánica de motos','mantenimiento de motos','mecánica básica','manual de mecánica','enderezado y pintura','inyección electrónica','mantenimiento de bicicleta','bicicleta eléctrica'] },
+  'Profissões e renda extra': {
+    pt: ['curso de barbeiro','curso de tatuagem','design de sobrancelhas','manicure iniciante','unhas de gel','alongamento de cílios','curso de maquiagem','extensão de cílios','curso de costura','moldes de costura','crochê para iniciantes','amigurumi','bordado','fazer velas aromáticas','sabonete artesanal','renda extra em casa'],
+    es: ['curso de barbería','curso de tatuaje','diseño de cejas','uñas acrílicas','uñas de gel','extensión de pestañas','curso de maquillaje','patrones de costura','corte y confección','crochet para principiantes','amigurumi','bordado a mano','velas aromáticas','jabones artesanales','ingresos extra desde casa'] },
+  'Culinária para vender': {
+    pt: ['receitas para vender','bolo no pote','salgados para vender','confeitaria lucrativa','marmitas fit','marmita congelada','brigadeiro gourmet','pão caseiro','doces para vender','ovos de páscoa','geladinho gourmet','pizza caseira'],
+    es: ['recetas para vender','postres para vender','repostería rentable','pan casero','comida para vender','viandas saludables','galletas decoradas','tortas para vender','chocolates artesanales','helados caseros'] },
+  'Saúde, corpo e bem-estar': {
+    pt: ['calistenia','treino em casa','protocolo de sono','insônia','chá para emagrecer','receitas low carb','jejum intermitente','dieta anti-inflamatória','yoga para iniciantes','pilates em casa','postura e dor nas costas','alongamento','receitas fit'],
+    es: ['calistenia','rutina en casa','dormir mejor','insomnio','recetas keto','ayuno intermitente','dieta antiinflamatoria','yoga para principiantes','pilates en casa','dolor de espalda','recetas saludables','té para adelgazar'] },
+  'Pets': {
+    pt: ['adestramento de cães','adestrar cachorro','petiscos caseiros para cães','comida natural para cães','banho e tosa','cuidados com gatos','apostila de adestramento'],
+    es: ['adiestramiento canino','perro obediente','educar a tu perro','comida natural para perros','premios caseros para perros','peluquería canina','cuidado de gatos'] },
+  'Mães, crianças e educação': {
+    pt: ['atividades para imprimir','atividades de alfabetização','apostila de alfabetização','atividades montessori','desenvolvimento infantil','caderno de caligrafia','atividades educativas','livro de colorir','histórias bíblicas infantis','introdução alimentar'],
+    es: ['actividades para imprimir','actividades de lectoescritura','montessori en casa','desarrollo infantil','cuadernillo de caligrafía','libro para colorear','actividades educativas','cuentos infantiles','alimentación complementaria'] },
+  'Estudos, concursos e saúde (estudantes)': {
+    pt: ['mapas mentais','resumos para concurso','apostila para concurso','questões comentadas','flashcards','mapas visuais','resumos de medicina','apostila de enfermagem','técnico de enfermagem','farmacologia','ENEM redação','inglês para iniciantes'],
+    es: ['mapas mentales','resúmenes de medicina','apuntes de enfermería','farmacología','flashcards','guía de estudio','inglés para principiantes','examen de admisión'] },
+  'IA, tecnologia e digital': {
+    pt: ['prompts para chatgpt','apostila de IA','inteligência artificial para iniciantes','ganhar dinheiro com IA','planilhas prontas','planilha financeira','canva para iniciantes','excel do zero','edição de vídeo no celular','fotografia com celular','artes para redes sociais'],
+    es: ['prompts para chatgpt','inteligencia artificial para principiantes','ganar dinero con IA','plantillas de excel','plantillas canva','excel desde cero','edición de video en el celular','fotografía con celular','diseño para redes sociales'] },
+  'Fé e espiritualidade': {
+    pt: ['novena poderosa','oração poderosa','devocional diário','estudo bíblico','bíblia comentada','salmos para','terço','plano de leitura bíblica','alma gêmea','numerologia','mapa astral'],
+    es: ['novena poderosa','oración poderosa','devocional diario','estudio bíblico','salmos para','santo rosario','María Desatanudos','alma gemela','numerología','carta astral'] },
+  'Finanças e vendas': {
+    pt: ['sair das dívidas','controle financeiro','organizar finanças','aposentadoria INSS','planejamento financeiro','vender no whatsapp','vender todo dia','marketing digital iniciante','renda extra online'],
+    es: ['salir de deudas','finanzas personales','control de gastos','vender por whatsapp','emprender desde casa','negocio desde casa','ingresos extra online'] },
+};
+const PAISES = { pt: ['BR', 'PT'], es: ['MX', 'CO', 'AR', 'CL', 'PE', 'EC', 'ES', 'ALL'] };
+let _jaTem = new Set();
+function montarSeletor() {
+  if (!$('#sel-nicho').options.length) $('#sel-nicho').innerHTML = Object.keys(NICHOS).map(n => `<option>${esc(n)}</option>`).join('');
+  const lg = $('#sel-lingua').value, pAt = $('#sel-pais').value;
+  $('#sel-pais').innerHTML = PAISES[lg].map(p => `<option>${p}</option>`).join('');
+  if (PAISES[lg].includes(pAt)) $('#sel-pais').value = pAt;
+  const pais = $('#sel-pais').value, lista = NICHOS[$('#sel-nicho').value][lg];
+  $('#sel-chips').innerHTML = lista.map((w, k) => {
+    const tem = _jaTem.has(w.toLowerCase() + '|' + pais);
+    return `<label class="chip" style="cursor:pointer;padding:6px 10px;${tem ? 'opacity:.45' : ''}"><input type="checkbox" class="sel-cb" value="${esc(w)}" ${tem ? 'disabled' : 'checked'} style="margin-right:5px">${esc(w)}${tem ? ' ✓' : ''}</label>`;
+  }).join('');
+}
+function selTodas(v) { document.querySelectorAll('.sel-cb:not(:disabled)').forEach(c => c.checked = v); }
+['#sel-nicho', '#sel-lingua', '#sel-pais'].forEach(s => $(s).onchange = montarSeletor);
+$('#sel-add').onclick = async () => {
+  const pais = $('#sel-pais').value;
+  const lista = [...document.querySelectorAll('.sel-cb:checked:not(:disabled)')].map(c => ({ user_id: UID, palavra: c.value, pais }));
+  if (!lista.length) return toast('Marque pelo menos uma palavra');
+  const { error } = await sb.from('mina_palavras').upsert(lista, { onConflict: 'user_id,palavra,pais', ignoreDuplicates: true });
+  if (error) return toast('Erro: ' + error.message);
+  listarPalavras(); carregarFiltros(); toast(`${lista.length} palavra(s) adicionada(s) em ${pais}`);
+};
+
 /* ---------- palavras ---------- */
 $('#f-add').onsubmit = async e => {
   e.preventDefault();
@@ -621,6 +699,7 @@ async function listarPalavras() {
     sb.from('mina_palavras').select('*').order('created_at', { ascending: false }),
     sb.from('mina_anuncios').select('palavra,pais').neq('status', 'descartada').limit(10000)
   ]);
+  _jaTem = new Set((data || []).map(p => p.palavra.toLowerCase() + '|' + p.pais)); montarSeletor();
   const n = {}; (cont || []).forEach(c => { const k = c.palavra + '|' + c.pais; n[k] = (n[k] || 0) + 1; });
   $('#t-palavras').innerHTML = (data || []).map(p => `<tr>
     <td>${esc(p.palavra)}</td><td>${esc(p.pais)}</td>
