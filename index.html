@@ -819,6 +819,9 @@ async function listarAcomp() {
   // uma linha por página: usa o criativo mais forte e junta o histórico
   const prio = { escalando: 5, nova: 4, estavel: 3, caindo: 2, morreu: 1, encerrado: 0 };
   const paginas = new Map();
+  const ini = (...d) => d.filter(Boolean).sort()[0] || null;
+  const iniPag = {}; (ofs || []).forEach(o => { const k = o.page_id || ('x' + o.id); iniPag[k] = ini(iniPag[k], o.inicio, o.pagina_inicio); });
+  (ofs || []).forEach(o => { o.inicio = iniPag[o.page_id || ('x' + o.id)]; });
   for (const o of ofs || []) {
     const k = o.page_id || ('x' + o.id);
     const atual = paginas.get(k);
