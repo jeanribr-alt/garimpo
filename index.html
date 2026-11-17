@@ -937,8 +937,8 @@ async function alternarAcomp(id, b) {
   b.classList.toggle('acomp-on', ligar); toast(ligar ? 'Acompanhando dia a dia 📡' : 'Parou de acompanhar'); contadores();
 }
 async function pararAcomp(ids) {
-  await sb.from('mina_anuncios').update({ acompanhar: false, acompanhar_status: 'encerrado' }).in('id', String(ids).split(',').map(Number));
-  listarAcomp(); contadores();
+  await sb.from('mina_anuncios').update({ status: 'nova', acompanhar: false, acompanhar_status: 'encerrado' }).in('id', String(ids).split(',').map(Number));
+  toast('Removida do Acompanhando e das Salvas'); listarAcomp(); contadores();
 }
 $('#b-checar').onclick = async () => {
   $('#b-checar').disabled = true; $('#acomp-status').textContent = 'Disparando...';
