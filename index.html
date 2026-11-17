@@ -555,8 +555,9 @@ async function carregarFiltros() {
 
 async function feed(reset) {
   if (reset) { pagina = 0; $('#grid').innerHTML = ''; }
-  let q = sb.from('mina_anuncios').select('*', { count: 'exact' });
-  q = view === 'salvas' ? q.eq('status', 'salva') : q.neq('status', 'descartada');
+  // ofertas: um card por oferta (mesma página + mesmo link = mesma oferta)
+  let q = view === 'salvas' ? sb.from('mina_anuncios').select('*', { count: 'exact' }).eq('status', 'salva')
+    : sb.from('mina_ofertas_v').select('*', { count: 'exact' });
   const busca = $('#f-busca').value.trim();
   if (busca) q = q.or(`page_nome.ilike.%${busca}%,texto.ilike.%${busca}%,link_vendas.ilike.%${busca}%,titulo.ilike.%${busca}%`);
   if ($('#f-palavra').value) q = q.eq('palavra', $('#f-palavra').value);
@@ -565,7 +566,7 @@ async function feed(reset) {
   if ($('#f-formato').value) q = q.eq('formato', $('#f-formato').value);
   if ($('#f-periodo').value) q = q.gte('primeira_vez', new Date(Date.now() - $('#f-periodo').value * 864e5).toISOString());
   const ord = $('#f-ordem').value;
-  if (ord === 'qtd') q = q.order('qtd_ads', { ascending: false });
+  if (ord === 'qtd') q = q.order(view === 'salvas' ? 'qtd_ads' : 'ads_oferta', { ascending: false });
   if (ord === 'novos') q = q.order('inicio', { ascending: false, nullsFirst: false });
   if (ord === 'minerados') q = q.order('primeira_vez', { ascending: false });
   q = q.range(pagina * POR_PAG, pagina * POR_PAG + POR_PAG - 1);
@@ -595,7 +596,7 @@ function card(a) {
   const ad = `https://www.facebook.com/ads/library/?id=${esc(a.ad_archive_id)}`;
   return `<div class="card" id="c${a.id}">
     <div class="c-top">
-      <div class="c-qtd"><b>${a.qtd_ads} anúncios ${subiu}</b>usam esse criativo</div>
+      <div class="c-qtd"><b>${a.qtd_ads} anúncios ${subiu}</b>${a.n_criativos > 1 ? `no criativo principal · <b>${a.n_criativos} criativos</b> nessa oferta` : 'usam esse criativo'}</div>
       <button class="btn sm ${a.status === 'salva' ? 'salvo' : ''}" onclick="salvar(${a.id},this)">${a.status === 'salva' ? '✓ Salva' : '☆ Salvar'}</button>
     </div>
     <div class="c-media">${media}${seloFormato(a.formato)}</div>
@@ -604,7 +605,7 @@ function card(a) {
     <div class="c-acoes">
       ${a.video_url || a.imagem_url ? `<a class="btn sec sm" href="${esc(a.video_url || a.imagem_url)}" target="_blank" rel="noopener">⬇ Baixar anúncio</a>` : ''}
       ${a.status === 'salva' ? `<button class="btn sm" onclick="abrirPag(${a.id})">✍️ Criar página</button>` : ''}
-      <button class="btn sec sm" style="flex:0" title="Descartar" onclick="descartar(${a.id})">✕</button>
+      <button class="btn sec sm" style="flex:0" title="Descartar" onclick="descartar(${a.id}, '${esc(a.oferta_chave || '')}')">✕</button>
     </div>
     <div class="c-rod">
       <div><span class="ic">🕒</span>${dias} dias${novo ? '<span class="novo">novo</span>' : ''}</div>
@@ -629,8 +630,10 @@ async function salvar(id, b) {
   toast(novo === 'salva' ? 'Salva ✓ · entrou no 📡 Acompanhando' : 'Removida das salvas');
   contadores();
 }
-async function descartar(id) {
-  await sb.from('mina_anuncios').update({ status: 'descartada' }).eq('id', id);
+async function descartar(id, chave) {
+  // descarta a oferta inteira (todos os criativos dela), menos os que já foram salvos
+  if (chave && view !== 'salvas') await sb.from('mina_anuncios').update({ status: 'descartada' }).eq('oferta_chave', chave).neq('status', 'salva');
+  else await sb.from('mina_anuncios').update({ status: 'descartada' }).eq('id', id);
   $('#c' + id).remove(); contadores();
 }
 
@@ -956,7 +959,7 @@ $('#b-checar').onclick = async () => {
 /* ---------- topo/rodapé ---------- */
 async function contadores() {
   const [a, b, c] = await Promise.all([
-    sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).neq('status', 'descartada'),
+    sb.from('mina_ofertas_v').select('id', { count: 'exact', head: true }),
     sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).eq('status', 'salva'),
     sb.from('mina_anuncios').select('page_id').eq('acompanhar', true)
   ]);
