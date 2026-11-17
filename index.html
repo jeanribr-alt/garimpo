@@ -834,7 +834,7 @@ async function listarAcomp() {
   const cols = { d1: [], d2: [], ok: [], morta: [] };
   for (const o of paginas.values()) {
     const h = porId[o.id] || [], dias = h.filter(d => d.pagina_ads != null), ult = dias[dias.length - 1];
-    const n = ult?.dia_n || dias.length || (o.inicio ? Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5) + 1 : 1);
+    const n = Math.max(1, dias.length); // coluna = dias que você está acompanhando
     const card = linhaAcomp(o, h);
     if (ult && !ult.pagina_ads) cols.morta.push(card);
     else if (n >= 3) cols.ok.push(card);
@@ -925,12 +925,12 @@ const dataBR = (d) => d ? d.slice(8,10) + '/' + d.slice(5,7) + '/' + d.slice(0,4
 function linhaAcomp(o, h) {
   const st = ST[o.acompanhar_status] || ST.nova;
   const hoje = h[h.length - 1] || {};
-  const diaAtual = hoje.dia_n || (o.inicio ? Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5) + 1 : null);
+  const diaAtual = Math.max(1, h.filter(d => d.pagina_ads != null).length);
   const bib = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&view_all_page_id=${esc(o.page_id)}`;
   return `<div class="acomp" id="ac${o.id}">
     <div class="ac-thumb">${o.imagem_url ? `<img src="${esc(o.imagem_url)}" onerror="this.remove()">` : ''}</div>
     <div class="ac-info">
-      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia</span>` : ''}${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
+      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia acompanhando</span>` : ''}${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
       ${o.inicio ? `<div class="ac-resumo"><span>📅 Rodando desde <b>${dataBR(o.inicio)}</b> (${Math.max(0, Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5))} dias no ar)</span></div>` : ''}
       <div class="ac-resumo">${hoje.pagina_ads != null ? `<span><b>${hoje.pagina_ads}</b> ativos na página</span><span><b>${hoje.novos_24h ?? 0}</b> novos subidos hoje</span>` : '<span>Aguardando a 1ª checagem</span>'}</div>
             <div class="veredito ${vereditoTxt(h)[1]}">${vereditoTxt(h)[0]}</div>
