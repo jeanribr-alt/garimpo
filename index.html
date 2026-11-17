@@ -416,6 +416,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
         <div class="linha"><label>Anúncios carregados por palavra (rolagem)</label><input id="c-lim" type="number" min="50" step="50" style="width:110px"></div>
         <div class="linha"><label>URL modelo (uma busca sua já em "mais recentes")</label><input id="c-url" style="flex:1;min-width:300px" placeholder="https://www.facebook.com/ads/library/?..."></div>
         <div class="linha"><label>Bloquear anúncios que mandam pro WhatsApp</label><input id="c-wpp" type="checkbox" style="width:18px;height:18px"></div>
+        <div class="linha" style="align-items:flex-start"><label>Meu público e o que NÃO quero<br><span style="font-size:11px">(a IA reprova ofertas fora disso)</span></label><textarea id="c-publico" style="flex:1;min-width:300px;min-height:110px" placeholder="Ex: homens e mulheres 35+, interior... NÃO QUERO: planilhas financeiras, prompts pra advogado, carreira musical..."></textarea></div>
         <div class="linha" style="align-items:flex-start"><label>Bloquear anúncios com estas palavras<br><span style="font-size:11px">(uma por linha; vale pra texto, página e link)</span></label>
           <textarea id="c-bloq" rows="8" style="flex:1;min-width:300px;font-family:inherit;font-size:13px;background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px 11px"></textarea></div>
         <div class="linha"><label>Página modelo das apostilas (o Lovable copia o design dela)</label><input id="c-modelo" style="flex:1;min-width:300px" placeholder="https://minhaenergiasolar.site/"></div>
@@ -748,7 +749,7 @@ async function carregarConfig() {
     (pals || []).map(p => `<option value="${p.id}">${esc(p.palavra)} · ${esc(p.pais)}${p.ativa ? '' : ' (pausada)'}</option>`).join('');
   $('#m-palavra').value = atual;
   const { data: c } = await sb.from('mina_config').select('*').eq('user_id', UID).maybeSingle();
-  $('#c-min').value = c?.min_ads ?? 2; $('#c-dias').value = c?.max_dias ?? ''; $('#c-lim').value = c?.limite_por_palavra ?? 1000; $('#c-url').value = c?.url_modelo ?? ''; $('#c-modelo').value = c?.modelo_pagina ?? '';
+  $('#c-min').value = c?.min_ads ?? 2; $('#c-dias').value = c?.max_dias ?? ''; $('#c-lim').value = c?.limite_por_palavra ?? 1000; $('#c-url').value = c?.url_modelo ?? ''; $('#c-modelo').value = c?.modelo_pagina ?? ''; $('#c-publico').value = c?.publico_alvo ?? '';
   $('#c-fbconta').value = c?.meta_conta ?? ''; $('#c-fbpagina').value = c?.meta_pagina ?? ''; $('#c-fbig').value = c?.meta_ig ?? ''; $('#c-fbpixel').value = c?.meta_pixel ?? ''; $('#c-fborc').value = c?.meta_orcamento ?? 30;
   testarFb(true);
   $('#c-wpp').checked = c?.bloquear_whatsapp !== false; $('#c-bloq').value = (c?.bloqueios || []).join('\n');
@@ -761,7 +762,7 @@ async function carregarConfig() {
 $('#b-cfg').onclick = async () => {
   const { error } = await sb.from('mina_config').update({
     min_ads: +$('#c-min').value || 2, max_dias: $('#c-dias').value ? +$('#c-dias').value : null,
-    limite_por_palavra: +$('#c-lim').value || 1000, url_modelo: $('#c-url').value.trim() || null, modelo_pagina: $('#c-modelo').value.trim() || 'https://minhaenergiasolar.site/', updated_at: new Date().toISOString(),
+    limite_por_palavra: +$('#c-lim').value || 1000, url_modelo: $('#c-url').value.trim() || null, modelo_pagina: $('#c-modelo').value.trim() || 'https://minhaenergiasolar.site/', publico_alvo: $('#c-publico').value.trim() || null, updated_at: new Date().toISOString(),
     bloquear_whatsapp: $('#c-wpp').checked,
     bloqueios: [...new Set($('#c-bloq').value.split('\n').map(s => s.trim().toLowerCase()).filter(Boolean))]
   }).eq('user_id', UID);
