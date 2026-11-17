@@ -514,7 +514,7 @@ async function entrar() {
   UID = (await sb.auth.getSession()).data.session?.user?.id || UID;
   $('#login').classList.add('hide'); $('#app').classList.remove('hide');
   $('#f-busca').value = ''; setTimeout(() => { if ($('#f-busca').value.includes('@')) { $('#f-busca').value = ''; feed(true); } }, 600);
-  carregarFiltros(); trocar(location.hash.slice(1) || 'ofertas'); contadores(); ultimaExec(); progresso();
+  carregarFiltros(); trocar(location.hash.slice(1) || 'ofertas'); contadores(); ultimaExec(); progresso(); avisoChaves();
 }
 
 /* ---------- navegação ---------- */
@@ -747,7 +747,7 @@ async function carregarConfig() {
   $('#c-fbconta').value = c?.meta_conta ?? ''; $('#c-fbpagina').value = c?.meta_pagina ?? ''; $('#c-fbig').value = c?.meta_ig ?? ''; $('#c-fbpixel').value = c?.meta_pixel ?? ''; $('#c-fborc').value = c?.meta_orcamento ?? 30;
   testarFb(true);
   $('#c-wpp').checked = c?.bloquear_whatsapp !== false; $('#c-bloq').value = (c?.bloqueios || []).join('\n');
-  fn('status').then(s => {
+  fn('status').then(s => { avisoChaves();
     $('#tk-st').textContent = s.tem_token ? 'conectado' : 'falta salvar'; $('#tk-st').className = 'pill ' + (s.tem_token ? 'concluida' : 'falhou');
     $('#ia-st').textContent = s.tem_ia ? 'ligado' : 'desligado'; $('#ia-st').className = 'pill ' + (s.tem_ia ? 'concluida' : 'falhou');
   }).catch(() => {});
@@ -961,6 +961,17 @@ async function contadores() {
     sb.from('mina_anuncios').select('page_id').eq('acompanhar', true)
   ]);
   $('#n-ofertas').textContent = a.count ?? 0; $('#n-salvas').textContent = b.count ?? 0; $('#n-acomp').textContent = new Set((c.data || []).map(x => x.page_id)).size;
+}
+/* ---------- aviso pra conta nova salvar as próprias chaves ---------- */
+async function avisoChaves() {
+  let s; try { s = await fn('status'); } catch (_) { return; }
+  document.getElementById('aviso-chaves')?.remove();
+  if (s.tem_token && s.tem_ia) return;
+  const d = document.createElement('div'); d.id = 'aviso-chaves'; d.className = 'veredito v-meio';
+  d.style.cssText = 'margin:0 0 14px;cursor:pointer';
+  d.innerHTML = `🔑 <b>Falta conectar ${!s.tem_token && !s.tem_ia ? 'o token da Apify e a chave da IA' : !s.tem_token ? 'o token da Apify' : 'a chave da IA'}</b> pra minerar. Toque aqui pra ir em Configurações.`;
+  d.onclick = () => trocar('config');
+  document.querySelector('main')?.prepend(d);
 }
 /* ---------- barra de progresso da mineração ---------- */
 let _progT = null, _progTinha = false;
