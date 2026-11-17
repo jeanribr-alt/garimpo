@@ -274,7 +274,8 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
           <option value="30">Últimos 30 dias</option>
         </select>
         <select id="f-ordem">
-          <option value="qtd">Mais anúncios</option>
+          <option value="criativos">🔥 Mais criativos</option>
+          <option value="qtd">💰 Mais anúncios no total</option>
           <option value="novos">Mais novos (início)</option>
           <option value="minerados">Minerados por último</option>
         </select>
@@ -567,6 +568,7 @@ async function feed(reset) {
   if ($('#f-periodo').value) q = q.gte('primeira_vez', new Date(Date.now() - $('#f-periodo').value * 864e5).toISOString());
   const ord = $('#f-ordem').value;
   if (ord === 'qtd') q = q.order(view === 'salvas' ? 'qtd_ads' : 'ads_oferta', { ascending: false });
+  if (ord === 'criativos') q = view === 'salvas' ? q.order('qtd_ads', { ascending: false }) : q.order('n_criativos', { ascending: false }).order('ads_oferta', { ascending: false });
   if (ord === 'novos') q = q.order('inicio', { ascending: false, nullsFirst: false });
   if (ord === 'minerados') q = q.order('primeira_vez', { ascending: false });
   q = q.range(pagina * POR_PAG, pagina * POR_PAG + POR_PAG - 1);
@@ -596,7 +598,7 @@ function card(a) {
   const ad = `https://www.facebook.com/ads/library/?id=${esc(a.ad_archive_id)}`;
   return `<div class="card" id="c${a.id}">
     <div class="c-top">
-      <div class="c-qtd">${a.n_criativos ? `<b>${a.n_criativos} criativo${a.n_criativos > 1 ? 's' : ''} ${subiu}</b>neste produto` : `<b>${a.qtd_ads} anúncios ${subiu}</b>usam esse criativo`}</div>
+      <div class="c-qtd">${a.n_criativos ? `<b>${a.n_criativos} criativo${a.n_criativos > 1 ? 's' : ''} ${subiu}</b>neste produto · ${a.ads_oferta} anúncios no total` : `<b>${a.qtd_ads} anúncios ${subiu}</b>usam esse criativo`}</div>
       <button class="btn sm ${a.status === 'salva' ? 'salvo' : ''}" onclick="salvar(${a.id},this)">${a.status === 'salva' ? '✓ Salva' : '☆ Salvar'}</button>
     </div>
     <div class="c-media">${media}${seloFormato(a.formato)}</div>
