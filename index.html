@@ -168,6 +168,8 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 /* ---------- acompanhamento ---------- */
 .acomp-on{background:var(--lime)!important;color:#0b0b0c!important;border-color:var(--lime)!important}
 .acomp-lista{display:flex;flex-direction:column;gap:12px;max-width:1100px}
+.pg-bar{height:10px;background:var(--line);overflow:hidden;margin-top:4px}.pg-bar i{display:block;height:100%;background:var(--lime);transition:width .6s}
+.pg-item{margin:8px 0;font-size:13px}.pg-item .pg-l{display:flex;justify-content:space-between;gap:8px}.pg-item .pg-l span{color:var(--mut);font-size:12px}
 .kanban{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
 .kb-col{background:var(--paper,transparent);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:10px;min-height:120px}
 .kb-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px;padding:2px 2px 6px;border-bottom:1px solid var(--line)}
@@ -248,6 +250,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     <a class="nav" data-v="config">⚙️ Configurações</a>
     <div class="rod">
       <button class="tema-btn" onclick="alternarTema()"><span class="tema-ic">☀️</span><span class="tema-txt">Modo claro</span></button>
+      <a href="#" id="prog-mini" class="hide" onclick="trocar('config');return false" style="display:block;margin-bottom:6px;font-size:12px;color:var(--lime)"></a>
       <div id="ultima">—</div>
       <a href="#" id="sair" style="color:var(--mut);display:block;margin-top:8px">Sair</a>
     </div>
@@ -347,7 +350,8 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
           <button class="btn" id="b-minerar">⛏ Minerar agora</button>
           <span class="sub" style="margin:0" id="m-status"></span>
         </div>
-        <p class="sub" style="font-size:12px;margin:0">Automático: todo dia às 6h. Os anúncios aparecem em alguns minutos depois que a busca termina.</p>
+        <div id="m-prog" class="hide" style="margin:10px 0"></div>
+        <p class="sub" style="font-size:12px;margin:0">Os anúncios aparecem em alguns minutos depois que a busca termina.</p>
       </div>
 
       <div class="box">
@@ -510,7 +514,7 @@ async function entrar() {
   UID = (await sb.auth.getSession()).data.session?.user?.id || UID;
   $('#login').classList.add('hide'); $('#app').classList.remove('hide');
   $('#f-busca').value = ''; setTimeout(() => { if ($('#f-busca').value.includes('@')) { $('#f-busca').value = ''; feed(true); } }, 600);
-  carregarFiltros(); trocar(location.hash.slice(1) || 'ofertas'); contadores(); ultimaExec();
+  carregarFiltros(); trocar(location.hash.slice(1) || 'ofertas'); contadores(); ultimaExec(); progresso();
 }
 
 /* ---------- navegação ---------- */
@@ -781,7 +785,7 @@ $('#b-minerar').onclick = async () => {
     const r = await fn('iniciar', escolhida ? { forcar: true, palavras: [+escolhida] } : { forcar: true });
     $('#m-status').textContent = r.iniciadas ? `✓ ${r.iniciadas} buscas iniciadas. Os anúncios entram em alguns minutos.` : (r.aviso || 'Nada iniciado');
     if (r.erros?.length) toast('Algumas falharam: ' + r.erros[0].slice(0, 120));
-    execucoes();
+    execucoes(); if (r.iniciadas) progresso();
   } catch (e) { $('#m-status').textContent = 'Erro: ' + e.message; }
   $('#b-minerar').disabled = false;
 };
@@ -957,6 +961,24 @@ async function contadores() {
     sb.from('mina_anuncios').select('page_id').eq('acompanhar', true)
   ]);
   $('#n-ofertas').textContent = a.count ?? 0; $('#n-salvas').textContent = b.count ?? 0; $('#n-acomp').textContent = new Set((c.data || []).map(x => x.page_id)).size;
+}
+/* ---------- barra de progresso da mineração ---------- */
+let _progT = null, _progTinha = false;
+async function progresso() {
+  clearTimeout(_progT);
+  let r; try { r = await fn('progresso'); } catch (_) { _progT = setTimeout(progresso, 15000); return; }
+  const box = $('#m-prog'), mini = $('#prog-mini');
+  if (!r.rodando) {
+    box.classList.add('hide'); mini.classList.add('hide');
+    if (_progTinha) { _progTinha = false; toast('⛏ Mineração concluída ✓'); execucoes(); contadores(); ultimaExec(); if (view === 'ofertas') feed(true); }
+    return;
+  }
+  _progTinha = true;
+  box.innerHTML = `<b>⛏ Minerando: ${r.total}% concluído</b><div class="pg-bar"><i style="width:${r.total}%"></i></div>` +
+    r.itens.map(i => `<div class="pg-item"><div class="pg-l"><b>${esc(i.palavra)} <span>${esc(i.pais)}</span></b><span>${i.pct}% · ${esc(i.fase)}${i.lidos ? ` · ${i.lidos}/${i.limite} anúncios` : ''}</span></div><div class="pg-bar"><i style="width:${i.pct}%"></i></div></div>`).join('');
+  box.classList.remove('hide');
+  mini.textContent = `⛏ Minerando ${r.total}%${r.rodando > 1 ? ` · ${r.rodando} palavras` : ''}`; mini.classList.remove('hide');
+  _progT = setTimeout(progresso, 6000);
 }
 async function ultimaExec() {
   const { data } = await sb.from('mina_execucoes').select('finalizada_em').eq('status', 'concluida').order('finalizada_em', { ascending: false }).limit(1);
