@@ -596,7 +596,7 @@ function card(a) {
   const ad = `https://www.facebook.com/ads/library/?id=${esc(a.ad_archive_id)}`;
   return `<div class="card" id="c${a.id}">
     <div class="c-top">
-      <div class="c-qtd"><b>${a.qtd_ads} anúncios ${subiu}</b>${a.n_criativos > 1 ? `no criativo principal · <b>${a.n_criativos} criativos</b> nessa oferta` : 'usam esse criativo'}</div>
+      <div class="c-qtd">${a.n_criativos ? `<b>${a.n_criativos} criativo${a.n_criativos > 1 ? 's' : ''} ${subiu}</b>neste produto` : `<b>${a.qtd_ads} anúncios ${subiu}</b>usam esse criativo`}</div>
       <button class="btn sm ${a.status === 'salva' ? 'salvo' : ''}" onclick="salvar(${a.id},this)">${a.status === 'salva' ? '✓ Salva' : '☆ Salvar'}</button>
     </div>
     <div class="c-media">${media}${seloFormato(a.formato)}</div>
