@@ -299,6 +299,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     <section id="v-paginas" class="hide">
       <h1>Páginas de vendas</h1>
       <p class="sub">Escolha uma oferta salva → "✍️ Criar página". A IA escreve a página no padrão da sua página modelo e abre no Lovable pronta pra enviar.</p>
+      <div class="pg-acoes" style="margin:10px 0 16px"><button class="btn" onclick="abrirSub(null)">🚀 Subir vídeos de um produto avulso</button></div>
       <div id="lista-pag" class="acomp-lista"></div>
     </section>
 
@@ -450,6 +451,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     <div class="modal" id="sub-box" style="max-width:760px">
       <h2>🚀 Preparar campanhas</h2>
       <div class="sub" id="sub-prod" style="margin:0"></div>
+      <div id="sub-prod-box" class="hide"><label>Nome do produto *</label><input id="sub-prod-nome" placeholder="Ex: Panetone"></div>
       <label>Link da página (seu domínio) *</label><input id="sub-link" placeholder="https://seudominio.com.br">
       <label>Textos dos anúncios (do 🎬 Criativos)</label><select id="sub-copy"></select>
       <div class="pg-acoes"><div style="flex:1"><label>Conta de anúncios</label><select id="sub-conta" style="width:100%;padding:8px;border:1px solid var(--line)"></select></div></div>
@@ -1161,12 +1163,14 @@ async function salvarDominio(id, v) {
 let _sub = { pagina: null, itens: [], copys: [] };
 function fecharSub() { $('#modal-sub').classList.add('hide'); }
 async function abrirSub(id) {
-  const p = (window._pags || []).find(x => x.id === id); if (!p) return;
+  const avulso = id == null;
+  const p = avulso ? { id: null, produto: '', dominio: '', pais: 'BR' } : (window._pags || []).find(x => x.id === id); if (!p) return;
   const { data: cfg } = await sb.from('mina_config').select('meta_orcamento,meta_conta,meta_pixel').eq('user_id', UID).maybeSingle();
   if (!cfg?.meta_conta || !cfg?.meta_pixel) { toast('Configure o Facebook Ads em Configurações primeiro'); trocar('config'); return; }
-  const { data: cps } = await sb.from('mina_copys').select('id,tipo,qtd,resultado,created_at').eq('pagina_id', id).eq('status', 'pronta').order('created_at', { ascending: false });
+  const { data: cps } = avulso ? { data: [] } : await sb.from('mina_copys').select('id,tipo,qtd,resultado,created_at').eq('pagina_id', id).eq('status', 'pronta').order('created_at', { ascending: false });
   _sub = { pagina: p, itens: [], copys: cps || [], conta: cfg.meta_conta };
-  $('#sub-prod').textContent = 'Produto: ' + p.produto;
+  $('#sub-prod').textContent = avulso ? 'Produto avulso (sem oferta minerada): escreva os textos de cada vídeo abaixo' : 'Produto: ' + p.produto;
+  $('#sub-prod-box').classList.toggle('hide', !avulso); $('#sub-prod-nome').value = '';
   $('#sub-link').value = p.dominio || ''; $('#sub-orc').value = cfg.meta_orcamento ?? 30; $('#sub-pais').value = p.pais || 'BR';
   $('#sub-copy').innerHTML = (cps || []).map(c => `<option value="${c.id}">${TIPO_NOME[c.tipo] || c.tipo} · ${c.qtd} variações · ${new Date(c.created_at).toLocaleDateString('pt-BR')}</option>`).join('') || '<option value="">(nenhum criativo — crie em 🎬 Criativos ou escreva os textos abaixo)</option>';
   $('#sub-lista').innerHTML = ''; $('#sub-resumo').classList.add('hide'); $('#sub-ir').disabled = true; $('#sub-ir').textContent = 'Confirmar e subir';
@@ -1197,8 +1201,11 @@ function textosDaVariacao(n) {
   return { texto: texto.trim(), titulo: titulo.trim().slice(0, 40), descricao: descricao.trim().slice(0, 30) };
 }
 function lerArquivos(files) {
-  const itens = [...files].map(f => ({ f, m: f.name.match(/ct\s*[-_ ]?\s*(\d+)/i) })).filter(x => x.m && /\.(mp4|mov|m4v|webm|jpe?g|png|webp)$/i.test(x.f.name))
-    .map(x => ({ n: +x.m[1], ct: 'CT' + x.m[1], f: x.f })).sort((a, b) => a.n - b.n);
+  const midias = [...files].filter(f => /\.(mp4|mov|m4v|webm|jpe?g|png|webp)$/i.test(f.name)).sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric: true }));
+  const comCt = midias.map(f => ({ f, m: f.name.match(/ct\s*[-_ ]?\s*(\d+)/i) }));
+  // se os arquivos não têm "CT1, CT2..." no nome, numera na ordem alfabética
+  const itens = (comCt.some(x => x.m) ? comCt.filter(x => x.m).map(x => ({ n: +x.m[1], f: x.f })) : midias.map((f, k) => ({ n: k + 1, f })))
+    .map(x => ({ ...x, ct: 'CT' + x.n })).sort((a, b) => a.n - b.n);
   const vistos = new Set(); _sub.itens = itens.filter(i => !vistos.has(i.n) && vistos.add(i.n)).map(i => ({ ...i, ...textosDaVariacao(i.n) }));
   montarListaSub();
 }
@@ -1224,8 +1231,9 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
 $('#sub-ir').onclick = async () => {
   let link = $('#sub-link').value.trim(); if (link && !/^https?:\/\//.test(link)) link = 'https://' + link;
   if (!link) return toast('Coloque o link da página (seu domínio)');
+  if (!_sub.pagina.id) { const nm = $('#sub-prod-nome').value.trim(); if (!nm) return toast('Coloque o nome do produto'); _sub.pagina.produto = nm; }
   if (_sub.itens.some(i => !i.texto.trim())) return toast('Tem anúncio sem texto principal');
-  if (link !== (_sub.pagina.dominio || '')) await salvarDominio(_sub.pagina.id, link);
+  if (_sub.pagina.id && link !== (_sub.pagina.dominio || '')) await salvarDominio(_sub.pagina.id, link);
   window._subindo = true; $('#sub-ir').disabled = true; $('#sub-ir').textContent = 'Enviando...'; $('#sub-cmd-box').classList.add('hide'); $('#sub-fechar').disabled = true;
   let ok = 0;
   for (let k = 0; k < _sub.itens.length; k++) {
