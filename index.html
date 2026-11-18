@@ -452,6 +452,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
       <div class="sub" id="sub-prod" style="margin:0"></div>
       <label>Link da página (seu domínio) *</label><input id="sub-link" placeholder="https://seudominio.com.br">
       <label>Textos dos anúncios (do 🎬 Criativos)</label><select id="sub-copy"></select>
+      <div class="pg-acoes"><div style="flex:1"><label>Conta de anúncios</label><select id="sub-conta" style="width:100%;padding:8px;border:1px solid var(--line)"></select></div></div>
       <div class="pg-acoes"><div style="flex:1"><label>Orçamento por campanha (R$/dia)</label><input id="sub-orc" type="number" min="1"></div><div style="flex:1"><label>País</label><input id="sub-pais" maxlength="2"></div></div>
       <label>Pasta com os vídeos (CT1, CT2, CT3...)</label>
       <div class="pg-acoes"><label class="btn sec" style="margin:0!important;color:var(--txt)!important">📁 Escolher pasta<input type="file" id="sub-pasta" webkitdirectory directory multiple hidden></label>
@@ -1171,7 +1172,21 @@ async function abrirSub(id) {
   $('#sub-lista').innerHTML = ''; $('#sub-resumo').classList.add('hide'); $('#sub-ir').disabled = true; $('#sub-ir').textContent = 'Confirmar e subir';
   $('#sub-pasta').value = ''; $('#sub-arqs').value = '';
   $('#modal-sub').classList.remove('hide');
+  carregarContas(cfg.meta_conta);
 }
+async function carregarContas(padrao) {
+  const sel = $('#sub-conta'), pd = String(padrao || '').replace(/\D/g, '');
+  sel.innerHTML = `<option value="${esc(pd)}">${esc(pd || '...')} (carregando contas...)</option>`;
+  try {
+    const r = await fn('meta_contas', {});
+    const l = r.contas || [];
+    if (!l.length) { sel.innerHTML = `<option value="${esc(pd)}">${esc(pd)}</option>`; return; }
+    if (pd && !l.some(c => c.id === pd)) l.unshift({ id: pd, nome: 'conta das Configurações', ativa: true });
+    sel.innerHTML = l.map(c => `<option value="${esc(c.id)}" ${c.id === pd ? 'selected' : ''} ${c.ativa ? '' : 'disabled'}>${esc(c.nome)} · ${esc(c.id)}${c.ativa ? '' : ' (desativada)'}</option>`).join('');
+    _sub.conta = sel.value;
+  } catch (e) { sel.innerHTML = `<option value="${esc(pd)}">${esc(pd)} (não deu pra listar: ${esc(e.message || e)})</option>`; }
+}
+$('#sub-conta').onchange = e => { _sub.conta = e.target.value; };
 function textosDaVariacao(n) {
   const c = _sub.copys.find(x => String(x.id) === $('#sub-copy').value); if (!c) return { texto: '', titulo: '', descricao: '' };
   const vars = lerCopy(c.resultado || '').vars; if (!vars.length) return { texto: '', titulo: '', descricao: '' };
@@ -1222,23 +1237,23 @@ $('#sub-ir').onclick = async () => {
         st('⬆ enviando imagem...'); path = `${UID}/${Date.now()}-${i.ct}.${ext}`;
         const up = await sb.storage.from('garimpo-midia').upload(path, i.f, { upsert: true, contentType: i.f.type || undefined });
         if (up.error) throw new Error(up.error.message);
-        m = await fn('meta_video', { path, nome: i.ct });
+        m = await fn('meta_video', { path, nome: i.ct, conta: _sub.conta });
       } else {
         // vídeo vai em pedaços direto pro Facebook (sem limite de tamanho)
-        const ini = await fn('meta_up_inicio', { tamanho: i.f.size });
+        const ini = await fn('meta_up_inicio', { tamanho: i.f.size, conta: _sub.conta });
         let s0 = ini.start, e0 = ini.end;
         while (s0 < e0) {
           st(`⬆ enviando vídeo ${Math.round(s0 / i.f.size * 100)}%`);
           const fim = Math.min(e0, s0 + 8 * 1048576);
           const { data: { session } } = await sb.auth.getSession();
-          const r = await fetch(`${SUPA_URL}/functions/v1/minera?action=meta_up_parte&sessao=${encodeURIComponent(ini.sessao)}&start=${s0}`, {
+          const r = await fetch(`${SUPA_URL}/functions/v1/minera?action=meta_up_parte&sessao=${encodeURIComponent(ini.sessao)}&start=${s0}&conta=${encodeURIComponent(_sub.conta || '')}`, {
             method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token, apikey: SUPA_KEY, 'Content-Type': 'application/octet-stream' }, body: i.f.slice(s0, fim) });
           const j = await r.json().catch(() => ({}));
           if (!r.ok || j.erro) throw new Error(j.erro || 'falha no envio (' + r.status + ')');
           s0 = j.start; e0 = j.end;
         }
         st('📤 finalizando envio...');
-        await fn('meta_up_fim', { sessao: ini.sessao, nome: i.ct + ' - ' + _sub.pagina.produto });
+        await fn('meta_up_fim', { sessao: ini.sessao, nome: i.ct + ' - ' + _sub.pagina.produto, conta: _sub.conta });
         m = { tipo: 'video', video_id: ini.video_id };
       }
       let thumb = null;
