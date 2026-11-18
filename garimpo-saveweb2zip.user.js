@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Garimpo → Save Web to Zip
 // @namespace    garimpo
-// @version      1.2
+// @version      1.3
 // @description  Quando o Garimpo abre o Save Web to Zip: preenche o link, clica em Save e fecha a janela quando o download começa
 // @match        https://saveweb2zip.com/*
 // @run-at       document-start
 // @grant        window.close
+// @grant        unsafeWindow
 // @updateURL    https://garimpo-beige.vercel.app/garimpo-saveweb2zip.user.js
 // @downloadURL  https://garimpo-beige.vercel.app/garimpo-saveweb2zip.user.js
 // ==/UserScript==
@@ -18,12 +19,14 @@
   // quando o site disparar o download, espera uns segundos e fecha a janela
   let fechando = false;
   const fechar = () => { if (fechando) return; fechando = true; setTimeout(() => window.close(), 4000); };
-  const clickOrig = HTMLAnchorElement.prototype.click;
-  HTMLAnchorElement.prototype.click = function () {
+  // mexe na página de verdade (o script roda isolado dela)
+  const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  const clickOrig = W.HTMLAnchorElement.prototype.click;
+  W.HTMLAnchorElement.prototype.click = function () {
     if (this.hasAttribute('download') || /\.zip|blob:|download/i.test(this.href || '')) fechar();
     return clickOrig.apply(this, arguments);
   };
-  try { window.navigation && window.navigation.addEventListener('navigate', (e) => { if (e.downloadRequest !== null || /\.zip|download/i.test(e.destination?.url || '')) fechar(); }); } catch (_) { /* navegador antigo */ }
+  try { W.navigation && W.navigation.addEventListener('navigate', (e) => { if (e.downloadRequest !== null || /\.zip|download/i.test(e.destination?.url || '')) fechar(); }); } catch (_) { /* navegador antigo */ }
   document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('a'); if (a && (a.hasAttribute('download') || /\.zip|download/i.test(a.href || ''))) fechar(); }, true);
 
   let tentativas = 0;
