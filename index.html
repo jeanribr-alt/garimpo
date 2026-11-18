@@ -604,11 +604,14 @@ function card(a) {
     ? `<img src="${esc(a.imagem_url || '')}" onerror="this.style.display='none'"><div class="play" onclick="tocar(this,'${esc(a.video_url)}')"></div><span class="tag">vídeo</span>`
     : a.imagem_url ? `<img src="${esc(a.imagem_url)}" onerror="this.outerHTML='<div class=sem>Mídia expirou — abra o anúncio</div>'">`
     : `<div class="sem">Sem mídia</div>`;
-  const bib = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=${esc(a.pais || 'ALL')}&view_all_page_id=${esc(a.page_id)}`;
+  const dom = (a.oferta_chave || '').startsWith('pg:') ? '' : String(a.oferta_chave || '').split('/')[0];
+  // várias páginas no mesmo site: abre a busca pelo domínio (mostra todas); senão, a página
+  const bib = a.n_paginas > 1 && dom ? `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=${esc(a.pais || 'ALL')}&search_type=keyword_unordered&q=${encodeURIComponent(dom)}`
+    : `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=${esc(a.pais || 'ALL')}&view_all_page_id=${esc(a.page_id)}`;
   const ad = `https://www.facebook.com/ads/library/?id=${esc(a.ad_archive_id)}`;
   return `<div class="card" id="c${a.id}">
     <div class="c-top">
-      <div class="c-qtd">${a.n_criativos ? `<b>${a.n_criativos} criativo${a.n_criativos > 1 ? 's' : ''} ${subiu}</b>neste produto · ${a.ads_oferta} anúncios no total` : `<b>${a.qtd_ads} anúncios ${subiu}</b>usam esse criativo`}</div>
+      <div class="c-qtd">${a.n_criativos ? `<b>${a.n_criativos} criativo${a.n_criativos > 1 ? 's' : ''} ${subiu}</b>neste produto · ${a.ads_oferta} anúncios no total${a.n_paginas > 1 ? ` · <b>${a.n_paginas} páginas</b> do Facebook` : ''}` : `<b>${a.qtd_ads} anúncios ${subiu}</b>usam esse criativo`}</div>
       <button class="btn sm ${a.status === 'salva' ? 'salvo' : ''}" onclick="salvar(${a.id},this)">${a.status === 'salva' ? '✓ Salva' : '☆ Salvar'}</button>
     </div>
     <div class="c-media">${media}${seloFormato(a.formato)}</div>
