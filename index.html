@@ -961,8 +961,10 @@ function juntarHist(ids, porId, pagDe) {
   const dias = {};
   for (const id of ids) for (const r of porId[id] || []) {
     const d = dias[r.dia] = dias[r.dia] || { _pags: new Set(), _det: [] };
-    if (d._pags.has(pagDe[id])) continue;
-    d._pags.add(pagDe[id]);
+    // checagem pelo site já soma todas as páginas: conta uma vez só
+    const fonte = r.fonte && String(r.fonte).startsWith('dom:') ? r.fonte : pagDe[id];
+    if (d._pags.has(fonte)) continue;
+    d._pags.add(fonte);
     if (!d.dia) Object.assign(d, r, { pagina_ads: null, novos_24h: 0, criativos: 0, criativos_ids: [] });
     if (r.pagina_ads != null) d.pagina_ads = (d.pagina_ads || 0) + r.pagina_ads;
     d.novos_24h += r.novos_24h || 0; d.criativos += r.criativos || 0;
