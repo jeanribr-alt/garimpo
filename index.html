@@ -180,7 +180,8 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 .kb-col .cp-txt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .acomp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-items:start}
 .acomp-grid .acomp{flex-direction:column;gap:10px}
-.acomp-grid .ac-thumb{width:100%;min-width:0;height:150px}
+.acomp-grid .ac-thumb{width:100%;min-width:0;height:170px;background:#f3f1ea}
+.acomp-grid .ac-thumb img.hero{object-fit:cover;object-position:top}
 .acomp-grid .campeao{flex-direction:row}
 .acomp-grid .cp-txt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .kb-mortas{margin-top:14px}.kb-mortas summary{cursor:pointer;color:var(--mut);font-size:13px}
@@ -955,6 +956,20 @@ function juntarHist(ids, porId, pagDe) {
   }
   return Object.keys(dias).sort().map(k => { const d = dias[k]; d.criativos_det = d._det.sort((a, b) => (b.ads || 0) - (a.ads || 0)); return d; });
 }
+// o serviço de print devolve uma imagem de "gerando" na 1ª vez: tenta de novo até vir o print de verdade
+function heroPronto(img) {
+  if (img.naturalWidth >= 1000) return;
+  const n = +(img.dataset.t || 0); if (n >= 6) return;
+  img.dataset.t = n + 1;
+  setTimeout(() => { img.src = img.src.replace(/&t=\d+$/, '') + '&t=' + (n + 1); }, 5000);
+}
+// print do topo (hero) da página de vendas; se não carregar, usa a imagem do criativo
+function heroImg(o) {
+  const fb = o.imagem_url ? `this.onerror=null;this.classList.remove('hero');this.src='${esc(o.imagem_url)}'` : 'this.remove()';
+  if (!/^https?:\/\//.test(o.link_vendas || '')) return o.imagem_url ? `<img src="${esc(o.imagem_url)}" onerror="this.remove()">` : '';
+  const shot = 'https://s0.wp.com/mshots/v1/' + encodeURIComponent(o.link_vendas) + '?w=1280&h=800';
+  return `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener"><img class="hero" loading="lazy" src="${shot}" onload="heroPronto(this)" onerror="${fb}"></a>`;
+}
 const dataBR = (d) => d ? d.slice(8,10) + '/' + d.slice(5,7) + '/' + d.slice(0,4) : '';
 function linhaAcomp(o, h) {
   const st = ST[o.acompanhar_status] || ST.nova;
@@ -964,7 +979,7 @@ function linhaAcomp(o, h) {
   const bib = o.n_paginas > 1 && dom ? `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&search_type=keyword_unordered&q=${encodeURIComponent(dom)}`
     : `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&view_all_page_id=${esc(o.page_id)}`;
   return `<div class="acomp" id="ac${o.id}">
-    <div class="ac-thumb">${o.imagem_url ? `<img src="${esc(o.imagem_url)}" onerror="this.remove()">` : ''}</div>
+    <div class="ac-thumb">${heroImg(o)}</div>
     <div class="ac-info">
       <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}${o.n_paginas > 1 ? ` <span style="font-weight:400;font-size:12px">+ ${o.n_paginas - 1} página${o.n_paginas > 2 ? 's' : ''} (${o.n_paginas} no total)</span>` : ''}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia acompanhando</span>` : ''}${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
       ${o.inicio ? `<div class="ac-resumo"><span>📅 Rodando desde <b>${dataBR(o.inicio)}</b> (${Math.max(0, Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5))} dias no ar)</span></div>` : ''}
