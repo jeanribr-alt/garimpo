@@ -178,6 +178,11 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 .kb-col .ac-thumb{width:100%;min-width:0;height:150px}
 .kb-col .campeao{flex-direction:row}
 .kb-col .cp-txt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.acomp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-items:start}
+.acomp-grid .acomp{flex-direction:column;gap:10px}
+.acomp-grid .ac-thumb{width:100%;min-width:0;height:150px}
+.acomp-grid .campeao{flex-direction:row}
+.acomp-grid .cp-txt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .kb-mortas{margin-top:14px}.kb-mortas summary{cursor:pointer;color:var(--mut);font-size:13px}
 .kb-mortas .acomp-lista{margin-top:10px}
 @media(max-width:900px){.kanban{grid-template-columns:1fr}}
@@ -858,12 +863,9 @@ async function listarAcomp() {
     else cols.d1.push(card);
   }
   if (!paginas.size) { $('#lista-acomp').innerHTML = '<div class="vazio">Nenhuma oferta em acompanhamento. Salve ofertas que elas entram aqui sozinhas.</div>'; return; }
-  const col = (t, dica, l) => `<div class="kb-col"><div class="kb-head">${t}<span>${l.length}</span></div>${l.join('') || `<div class="sub" style="font-size:12px;margin:0">${dica}</div>`}</div>`;
-  $('#lista-acomp').innerHTML = `<div class="kanban">
-    ${col('1º dia', 'Nenhuma oferta no 1º dia', cols.d1)}
-    ${col('2º dia', 'Nenhuma oferta no 2º dia', cols.d2)}
-    ${col('✅ Aprovada pra teste', 'Ofertas com 3+ dias no ar aparecem aqui', cols.ok)}
-  </div>${cols.morta.length ? `<details class="kb-mortas"><summary>💀 Não validaram (${cols.morta.length})</summary><div class="acomp-lista">${cols.morta.join('')}</div></details>` : ''}`;
+  // cards lado a lado: primeiro as com mais dias acompanhando
+  const vivos = [...cols.ok, ...cols.d2, ...cols.d1];
+  $('#lista-acomp').innerHTML = `<div class="acomp-grid">${vivos.join('') || '<div class="vazio">Nenhuma oferta ativa em acompanhamento.</div>'}</div>${cols.morta.length ? `<details class="kb-mortas"><summary>💀 Não validaram (${cols.morta.length})</summary><div class="acomp-grid" style="margin-top:10px">${cols.morta.join('')}</div></details>` : ''}`;
 }
 /* ---------- detector de expert: selos ---------- */
 const FORMATOS = {
