@@ -441,6 +441,12 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
       </div>
 
       <div class="box">
+        <h2>🤖 Central de Agentes</h2>
+        <p class="sub">A Central do seu PC lista as ofertas salvas aqui. Clique em "Copiar chave" e cole na Central (🔑 Garimpo). Ou só use o botão "🤖 Modelar na Central" num card do Acompanhando, que ela conecta sozinha.</p>
+        <div class="linha"><label>Chave da Central</label><input id="c-central" readonly style="flex:1;min-width:300px;font-family:monospace" placeholder="ainda não gerada"><button class="btn sm" id="b-central">Copiar chave</button><button class="btn sm" id="b-central-nova" title="Gera outra chave; a antiga para de funcionar">Trocar</button></div>
+      </div>
+
+      <div class="box">
         <h2>Últimas execuções</h2>
         <table><thead><tr><th>Quando</th><th>Palavra</th><th>Status</th><th>Lidos</th><th>Novos</th><th>Atualizados</th></tr></thead><tbody id="t-exec"></tbody></table>
       </div>
@@ -780,6 +786,7 @@ async function carregarConfig() {
   $('#c-min').value = c?.min_ads ?? 2; $('#c-dias').value = c?.max_dias ?? ''; $('#c-lim').value = c?.limite_por_palavra ?? 1000; $('#c-url').value = c?.url_modelo ?? ''; $('#c-modelo').value = c?.modelo_pagina ?? ''; $('#c-publico').value = c?.publico_alvo ?? '';
   $('#c-fbconta').value = c?.meta_conta ?? ''; $('#c-fbpagina').value = c?.meta_pagina ?? ''; $('#c-fbig').value = c?.meta_ig ?? ''; $('#c-fbpixel').value = c?.meta_pixel ?? ''; $('#c-fborc').value = c?.meta_orcamento ?? 30;
   testarFb(true);
+  $('#c-central').value = c?.central_chave || '';
   $('#c-wpp').checked = c?.bloquear_whatsapp !== false; $('#c-bloq').value = (c?.bloqueios || []).join('\n');
   fn('status').then(s => { avisoChaves();
     $('#tk-st').textContent = s.tem_token ? 'conectado' : 'falta salvar'; $('#tk-st').className = 'pill ' + (s.tem_token ? 'concluida' : 'falhou');
@@ -796,6 +803,16 @@ $('#b-cfg').onclick = async () => {
   }).eq('user_id', UID);
   toast(error ? 'Erro: ' + error.message : 'Filtros salvos ✓');
 };
+// chave que deixa a Central de Agentes (no PC) listar as ofertas salvas
+async function chaveCentral(nova) {
+  if (!nova) { const { data } = await sb.from('mina_config').select('central_chave').eq('user_id', UID).maybeSingle(); if (data?.central_chave) return data.central_chave; }
+  const k = [...crypto.getRandomValues(new Uint8Array(20))].map(b => b.toString(16).padStart(2, '0')).join('');
+  const { error } = await sb.from('mina_config').update({ central_chave: k }).eq('user_id', UID);
+  if (error) throw error;
+  return k;
+}
+$('#b-central').onclick = async () => { try { const k = await chaveCentral(); $('#c-central').value = k; await navigator.clipboard.writeText(k); toast('Chave copiada ✓ cole na Central'); } catch (e) { toast('Erro: ' + e.message); } };
+$('#b-central-nova').onclick = async () => { if (!confirm('Gerar outra chave? A Central vai precisar da nova.')) return; try { $('#c-central').value = await chaveCentral(true); toast('Chave nova gerada'); } catch (e) { toast('Erro: ' + e.message); } };
 $('#b-token').onclick = async () => {
   const t = $('#c-token').value.trim(); if (!t) return;
   try { await fn('salvar_token', { token: t }); $('#c-token').value = ''; toast('Token salvo ✓'); carregarConfig(); }
@@ -1048,8 +1065,10 @@ async function baixarPagina(link) {
   if (!aba) toast('Libere pop-ups pro Garimpo abrir o Save Web to Zip');
 }
 // manda a oferta (com tudo que o Garimpo já levantou) pra Central de Agentes no PC
-function modelarCentral(id) {
+async function modelarCentral(id) {
   const { o, h } = CARDS[id] || {}; if (!o) return;
+  const janela = window.open('', 'central_agentes');
+  let chave = ''; try { chave = await chaveCentral(); } catch (_) {}
   const hoje = h[h.length - 1] || {};
   const rows = o.ids.map(i => LINHAS[i]).filter(Boolean).sort((a, b) => (b.qtd_ads || 0) - (a.qtd_ads || 0));
   const dom = (o.oferta_chave || '').startsWith('pg:') ? '' : String(o.oferta_chave || '').split('/')[0];
@@ -1081,9 +1100,10 @@ function modelarCentral(id) {
     ].filter(Boolean).join('\n')),
     '', '(Os links de vídeo/imagem do Facebook expiram: abra pela Biblioteca se precisar.)'
   ].filter(x => x !== '').join('\n');
-  const pacote = { link: o.link_vendas || bib, nome: dom || o.page_nome || '', md };
+  const pacote = { link: o.link_vendas || bib, nome: dom || o.page_nome || '', chave: o.oferta_chave || o.page_id, md, garimpoChave: chave };
   const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(pacote)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  window.open('http://localhost:4317/#garimpo=' + b64, 'central_agentes');
+  const url = 'http://localhost:4317/#garimpo=' + b64;
+  if (janela) janela.location.href = url; else window.open(url, 'central_agentes');
   toast('Abrindo na Central de Agentes 🤖 (ela precisa estar ligada no PC)');
 }
 async function pararAcomp(ids) {
