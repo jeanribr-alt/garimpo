@@ -443,7 +443,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
       <div class="box">
         <h2>🤖 Central de Agentes</h2>
         <p class="sub">A Central do seu PC lista as ofertas salvas aqui. Clique em "Copiar chave" e cole na Central (🔑 Garimpo). Ou só use o botão "🤖 Modelar na Central" num card do Acompanhando, que ela conecta sozinha.</p>
-        <div class="linha"><label>Chave da Central</label><input id="c-central" readonly style="flex:1;min-width:300px;font-family:monospace" placeholder="ainda não gerada"><button class="btn sm" id="b-central">Copiar chave</button><button class="btn sm" id="b-central-nova" title="Gera outra chave; a antiga para de funcionar">Trocar</button></div>
+        <div class="linha"><label>Chave da Central</label><input id="c-central" readonly style="flex:1;min-width:300px;font-family:monospace" placeholder="gerando…"><button class="btn sm" id="b-central">Copiar chave</button><button class="btn sm" id="b-central-nova" title="Gera outra chave; a antiga para de funcionar">Trocar</button></div>
       </div>
 
       <div class="box">
@@ -787,6 +787,7 @@ async function carregarConfig() {
   $('#c-fbconta').value = c?.meta_conta ?? ''; $('#c-fbpagina').value = c?.meta_pagina ?? ''; $('#c-fbig').value = c?.meta_ig ?? ''; $('#c-fbpixel').value = c?.meta_pixel ?? ''; $('#c-fborc').value = c?.meta_orcamento ?? 30;
   testarFb(true);
   $('#c-central').value = c?.central_chave || '';
+  if (c && !c.central_chave) chaveCentral(true).then(k => { $('#c-central').value = k; }).catch(() => {});
   $('#c-wpp').checked = c?.bloquear_whatsapp !== false; $('#c-bloq').value = (c?.bloqueios || []).join('\n');
   fn('status').then(s => { avisoChaves();
     $('#tk-st').textContent = s.tem_token ? 'conectado' : 'falta salvar'; $('#tk-st').className = 'pill ' + (s.tem_token ? 'concluida' : 'falhou');
