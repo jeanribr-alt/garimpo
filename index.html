@@ -1037,7 +1037,9 @@ async function alternarAcomp(id, b) {
 // copia o link da oferta e abre o Save Web to Zip: é só colar (Ctrl+V) e clicar em Save
 async function baixarPagina(link) {
   // o link vai no # da página; o script do Tampermonkey (garimpo-saveweb2zip.user.js) preenche o campo sozinho
-  const aba = window.open('https://saveweb2zip.com/en#u=' + encodeURIComponent(link), '_blank'); if (aba) aba.opener = null;
+  // abre numa janelinha no canto; o script do Tampermonkey baixa e fecha ela sozinho
+  const aba = window.open('https://saveweb2zip.com/en#u=' + encodeURIComponent(link), 'garimpo_zip', 'width=420,height=360,left=' + (screen.availWidth - 440) + ',top=' + (screen.availHeight - 400));
+  if (aba) { aba.opener = null; setTimeout(() => { try { window.focus(); } catch (_) {} }, 300); }
   try { await navigator.clipboard.writeText(link); toast('Baixando a página pelo Save Web to Zip ⬇'); }
   catch (_) { prompt('Copie o link e cole no Save Web to Zip:', link); }
   if (!aba) toast('Libere pop-ups pro Garimpo abrir o Save Web to Zip');
