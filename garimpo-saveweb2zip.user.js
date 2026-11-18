@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Garimpo → Save Web to Zip
 // @namespace    garimpo
-// @version      1.3
+// @version      1.4
 // @description  Quando o Garimpo abre o Save Web to Zip: preenche o link, clica em Save e fecha a janela quando o download começa
 // @match        https://saveweb2zip.com/*
 // @run-at       document-start
@@ -16,11 +16,13 @@
   const link = decodeURIComponent(m[1]);
   history.replaceState(null, '', location.pathname);
 
-  // quando o site disparar o download, espera uns segundos e fecha a janela
-  let fechando = false;
-  const fechar = () => { if (fechando) return; fechando = true; setTimeout(() => window.close(), 4000); };
   // mexe na página de verdade (o script roda isolado dela)
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  // quando o site disparar o download, espera uns segundos e fecha a janela
+  let fechando = false;
+  // fecha a janela (vários jeitos, porque o Chrome às vezes ignora o primeiro)
+  const fecharJa = () => { try { window.close(); } catch (_) {} try { W.close(); } catch (_) {} try { W.open('', '_self'); W.close(); } catch (_) {} };
+  const fechar = () => { if (fechando) return; fechando = true; setTimeout(fecharJa, 4000); };
   const clickOrig = W.HTMLAnchorElement.prototype.click;
   W.HTMLAnchorElement.prototype.click = function () {
     if (this.hasAttribute('download') || /\.zip|blob:|download/i.test(this.href || '')) fechar();
@@ -42,6 +44,11 @@
       inp.dispatchEvent(new Event('input', { bubbles: true }));
       inp.dispatchEvent(new Event('change', { bubbles: true }));
       setTimeout(() => btn.click(), 600);
+      // quando aparece "Website is ready for download!" o zip já foi baixado: fecha a janela
+      const vigia = setInterval(() => {
+        if (/ready for download|pronto para (download|baixar)/i.test(document.body?.innerText || '')) { clearInterval(vigia); fechando = true; setTimeout(fecharJa, 2500); }
+      }, 500);
+      setTimeout(() => clearInterval(vigia), 10 * 60e3);
     }, 250);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
