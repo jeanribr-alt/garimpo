@@ -243,7 +243,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
     <div class="menu-t">Mineração</div>
     <a class="nav" data-v="ofertas">🔥 Ofertas <b id="n-ofertas">0</b></a>
     <a class="nav" data-v="acompanhando">📡 Acompanhando <b id="n-acomp">0</b></a>
-    <a class="nav" data-v="salvas">⭐ Salvas <b id="n-salvas">0</b></a>
+    <b id="n-salvas" class="hide">0</b>
     <a class="nav" data-v="paginas">✍️ Páginas</a>
     <a class="nav" data-v="copys">🎬 Criativos</a>
     <a class="nav" data-v="palavras">🔑 Palavras-chave</a>
@@ -526,6 +526,7 @@ async function entrar() {
 /* ---------- navegação ---------- */
 document.querySelectorAll('.nav').forEach(n => n.onclick = () => trocar(n.dataset.v));
 function trocar(v) {
+  if (v === 'salvas') v = 'acompanhando';
   view = v; location.hash = v;
   document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.v === v));
   $('#v-ofertas').classList.toggle('hide', !['ofertas', 'salvas'].includes(v));
@@ -642,7 +643,7 @@ async function salvar(id, b) {
   await sb.from('mina_anuncios').update({ status: novo }).eq('id', id);
   b.classList.toggle('salvo'); b.textContent = novo === 'salva' ? '✓ Salva' : '☆ Salvar';
   if (view === 'salvas' && novo === 'nova') $('#c' + id).remove();
-  toast(novo === 'salva' ? 'Salva ✓ · entrou no 📡 Acompanhando' : 'Removida das salvas');
+  toast(novo === 'salva' ? 'Salva ✓ · entrou no 📡 Acompanhando' : 'Saiu do 📡 Acompanhando');
   contadores();
 }
 async function descartar(id, chave) {
@@ -832,10 +833,12 @@ async function listarAcomp() {
   const prio = { escalando: 5, nova: 4, estavel: 3, caindo: 2, morreu: 1, encerrado: 0 };
   const paginas = new Map();
   const ini = (...d) => d.filter(Boolean).sort()[0] || null;
-  const iniPag = {}; (ofs || []).forEach(o => { const k = o.page_id || ('x' + o.id); iniPag[k] = ini(iniPag[k], o.inicio, o.pagina_inicio); });
-  (ofs || []).forEach(o => { o.inicio = iniPag[o.page_id || ('x' + o.id)]; });
+  const chaveOf = o => o.oferta_chave || o.page_id || ('x' + o.id);
+  const iniPag = {}; (ofs || []).forEach(o => { const k = chaveOf(o); iniPag[k] = ini(iniPag[k], o.inicio, o.pagina_inicio); });
+  (ofs || []).forEach(o => { o.inicio = iniPag[chaveOf(o)]; });
+  const pagDe = {}; (ofs || []).forEach(o => { pagDe[o.id] = o.page_id; });
   for (const o of ofs || []) {
-    const k = o.page_id || ('x' + o.id);
+    const k = chaveOf(o);
     const atual = paginas.get(k);
     if (!atual) { paginas.set(k, { ...o, ids: [o.id] }); continue; }
     atual.ids.push(o.id);
@@ -845,7 +848,8 @@ async function listarAcomp() {
   }
   const cols = { d1: [], d2: [], ok: [], morta: [] };
   for (const o of paginas.values()) {
-    const h = porId[o.id] || [], dias = h.filter(d => d.pagina_ads != null), ult = dias[dias.length - 1];
+    o.n_paginas = new Set(o.ids.map(i => pagDe[i]).filter(Boolean)).size;
+    const h = juntarHist(o.ids, porId, pagDe), dias = h.filter(d => d.pagina_ads != null), ult = dias[dias.length - 1];
     const n = Math.max(1, dias.length); // coluna = dias que você está acompanhando
     const card = linhaAcomp(o, h);
     if (ult && !ult.pagina_ads) cols.morta.push(card);
@@ -933,18 +937,36 @@ function vereditoTxt(h) {
   return ['⏳ Em teste: estável por enquanto, acompanhe mais um dia.', 'v-espera'];
 }
 
+// junta o dia a dia de todas as páginas da mesma oferta (soma os anúncios de cada página, sem repetir)
+function juntarHist(ids, porId, pagDe) {
+  const dias = {};
+  for (const id of ids) for (const r of porId[id] || []) {
+    const d = dias[r.dia] = dias[r.dia] || { _pags: new Set(), _det: [] };
+    if (d._pags.has(pagDe[id])) continue;
+    d._pags.add(pagDe[id]);
+    if (!d.dia) Object.assign(d, r, { pagina_ads: null, novos_24h: 0, criativos: 0, criativos_ids: [] });
+    if (r.pagina_ads != null) d.pagina_ads = (d.pagina_ads || 0) + r.pagina_ads;
+    d.novos_24h += r.novos_24h || 0; d.criativos += r.criativos || 0;
+    d.criativos_ids = d.criativos_ids.concat(r.criativos_ids || []);
+    d._det = d._det.concat(r.criativos_det || []);
+    d.criativo_ads = Math.max(d.criativo_ads || 0, r.criativo_ads || 0);
+  }
+  return Object.keys(dias).sort().map(k => { const d = dias[k]; d.criativos_det = d._det.sort((a, b) => (b.ads || 0) - (a.ads || 0)); return d; });
+}
 const dataBR = (d) => d ? d.slice(8,10) + '/' + d.slice(5,7) + '/' + d.slice(0,4) : '';
 function linhaAcomp(o, h) {
   const st = ST[o.acompanhar_status] || ST.nova;
   const hoje = h[h.length - 1] || {};
   const diaAtual = Math.max(1, h.filter(d => d.pagina_ads != null).length);
-  const bib = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&view_all_page_id=${esc(o.page_id)}`;
+  const dom = (o.oferta_chave || '').startsWith('pg:') ? '' : String(o.oferta_chave || '').split('/')[0];
+  const bib = o.n_paginas > 1 && dom ? `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&search_type=keyword_unordered&q=${encodeURIComponent(dom)}`
+    : `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&view_all_page_id=${esc(o.page_id)}`;
   return `<div class="acomp" id="ac${o.id}">
     <div class="ac-thumb">${o.imagem_url ? `<img src="${esc(o.imagem_url)}" onerror="this.remove()">` : ''}</div>
     <div class="ac-info">
-      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia acompanhando</span>` : ''}${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
+      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}${o.n_paginas > 1 ? ` <span style="font-weight:400;font-size:12px">+ ${o.n_paginas - 1} página${o.n_paginas > 2 ? 's' : ''} (${o.n_paginas} no total)</span>` : ''}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia acompanhando</span>` : ''}${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
       ${o.inicio ? `<div class="ac-resumo"><span>📅 Rodando desde <b>${dataBR(o.inicio)}</b> (${Math.max(0, Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5))} dias no ar)</span></div>` : ''}
-      <div class="ac-resumo">${hoje.pagina_ads != null ? `<span><b>${hoje.pagina_ads}</b> ativos na página</span><span><b>${hoje.novos_24h ?? 0}</b> novos subidos hoje</span>` : '<span>Aguardando a 1ª checagem</span>'}</div>
+      <div class="ac-resumo">${hoje.pagina_ads != null ? `<span><b>${hoje.pagina_ads}</b> ativos ${o.n_paginas > 1 ? `nas ${o.n_paginas} páginas` : 'na página'}</span><span><b>${hoje.novos_24h ?? 0}</b> novos subidos hoje</span>` : '<span>Aguardando a 1ª checagem</span>'}</div>
             <div class="veredito ${vereditoTxt(h)[1]}">${vereditoTxt(h)[0]}</div>
       ${blocoCampeao(h)}
       ${relatorio(h, o.inicio).length ? `<details class="relat"><summary>Ver relatório dia a dia</summary><ol>${relatorio(h, o.inicio).map(r => `<li class="${r.cls}"><span>${r.n}º dia</span><p>${r.txt}</p></li>`).join('')}</ol></details>` : ''}
@@ -981,9 +1003,9 @@ async function contadores() {
   const [a, b, c] = await Promise.all([
     sb.from('mina_ofertas_v').select('id', { count: 'exact', head: true }),
     sb.from('mina_anuncios').select('id', { count: 'exact', head: true }).eq('status', 'salva'),
-    sb.from('mina_anuncios').select('page_id').eq('acompanhar', true)
+    sb.from('mina_anuncios').select('page_id,oferta_chave').eq('acompanhar', true)
   ]);
-  $('#n-ofertas').textContent = a.count ?? 0; $('#n-salvas').textContent = b.count ?? 0; $('#n-acomp').textContent = new Set((c.data || []).map(x => x.page_id)).size;
+  $('#n-ofertas').textContent = a.count ?? 0; $('#n-salvas').textContent = b.count ?? 0; $('#n-acomp').textContent = new Set((c.data || []).map(x => x.oferta_chave || x.page_id)).size;
 }
 /* ---------- aviso pra conta nova salvar as próprias chaves ---------- */
 async function avisoChaves() {
