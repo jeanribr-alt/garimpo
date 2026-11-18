@@ -851,7 +851,7 @@ async function listarAcomp() {
   const chaveOf = o => o.oferta_chave || o.page_id || ('x' + o.id);
   const iniPag = {}; (ofs || []).forEach(o => { const k = chaveOf(o); iniPag[k] = ini(iniPag[k], o.inicio, o.pagina_inicio); });
   (ofs || []).forEach(o => { o.inicio = iniPag[chaveOf(o)]; });
-  const pagDe = {}; (ofs || []).forEach(o => { pagDe[o.id] = o.page_id; });
+  const pagDe = {}; (ofs || []).forEach(o => { pagDe[o.id] = o.page_id; LINHAS[o.id] = o; });
   for (const o of ofs || []) {
     const k = chaveOf(o);
     const atual = paginas.get(k);
@@ -1003,8 +1003,10 @@ function numerosAcomp(hoje, o) {
   </div>
   <div class="ac-resumo"><span>${dupTxt}</span></div>`;
 }
+const LINHAS = {}, CARDS = {};
 const dataBR = (d) => d ? d.slice(8,10) + '/' + d.slice(5,7) + '/' + d.slice(0,4) : '';
 function linhaAcomp(o, h) {
+  CARDS[o.id] = { o, h };
   const st = ST[o.acompanhar_status] || ST.nova;
   const hoje = h[h.length - 1] || {};
   const diaAtual = Math.max(1, h.filter(d => d.pagina_ads != null).length);
@@ -1023,7 +1025,8 @@ function linhaAcomp(o, h) {
         <a href="${bib}" target="_blank" rel="noopener">Biblioteca</a>
         ${o.link_vendas ? `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener">Visitar site</a>` : ''}
         ${o.link_vendas ? `<a href="#" onclick="baixarPagina('${esc(o.link_vendas)}');return false">⬇ Baixar página</a>` : ''}
-        <a href="#" onclick="abrirPag(${o.id});return false"><b>✍️ Criar página</b></a>
+        <a href="#" onclick="abrirPag(${o.id});return false">✍️ Criar página</a>
+        <a href="#" onclick="modelarCentral(${o.id});return false"><b>🤖 Modelar na Central</b></a>
         ${o.acompanhar ? `<a href="#" onclick="pararAcomp('${o.ids.join(',')}');return false">Parar de acompanhar</a>` : ''}
       </div>
     </div>
@@ -1043,6 +1046,45 @@ async function baixarPagina(link) {
   try { await navigator.clipboard.writeText(link); toast('Baixando a página pelo Save Web to Zip ⬇'); }
   catch (_) { prompt('Copie o link e cole no Save Web to Zip:', link); }
   if (!aba) toast('Libere pop-ups pro Garimpo abrir o Save Web to Zip');
+}
+// manda a oferta (com tudo que o Garimpo já levantou) pra Central de Agentes no PC
+function modelarCentral(id) {
+  const { o, h } = CARDS[id] || {}; if (!o) return;
+  const hoje = h[h.length - 1] || {};
+  const rows = o.ids.map(i => LINHAS[i]).filter(Boolean).sort((a, b) => (b.qtd_ads || 0) - (a.qtd_ads || 0));
+  const dom = (o.oferta_chave || '').startsWith('pg:') ? '' : String(o.oferta_chave || '').split('/')[0];
+  const bib = o.n_paginas > 1 && dom ? `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&search_type=keyword_unordered&q=${encodeURIComponent(dom)}`
+    : `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&view_all_page_id=${o.page_id}`;
+  const dias = o.inicio ? Math.max(0, Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5)) : null;
+  const qtd = Object.values(hoje.criativos_qtd || {});
+  const links = [...new Set(rows.map(r => r.link_vendas).filter(Boolean))];
+  const pags = [...new Map(rows.map(r => [r.page_id, r.page_nome])).entries()];
+  const corta = (t, n) => { t = String(t || '').trim(); return t.length > n ? t.slice(0, n) + '…' : t; };
+  const md = [
+    `# Dados do Garimpo — ${dom || o.page_nome || 'oferta'}`, '',
+    `- Página de vendas: ${o.link_vendas || '(sem link)'}`,
+    links.length > 1 ? `- Outros links de venda da mesma oferta: ${links.filter(l => l !== o.link_vendas).join(' , ')}` : '',
+    `- Biblioteca de anúncios: ${bib}`,
+    `- Anúncio principal: https://www.facebook.com/ads/library/?id=${o.ad_archive_id}`,
+    `- Páginas do Facebook (${pags.length}): ${pags.map(([id, n]) => `${n || '?'} (${id})`).join(' , ')}`,
+    `- Nicho: ${o.nicho || '?'} · Formato do criativo: ${o.formato || '?'} · Palavra minerada: ${o.palavra || '?'} · País: ${o.pais || '?'}`,
+    `- Rodando há: ${dias ?? '?'} dias (desde ${dataBR(o.inicio)})`,
+    `- Hoje: ${hoje.pagina_ads ?? o.qtd_ads ?? '?'} anúncios ativos · ${qtd.length || hoje.criativos || '?'} criativos diferentes`,
+    `- Veredito do Garimpo: ${vereditoTxt(h)[0]}`,
+    `- Print do topo da página: https://s0.wp.com/mshots/v1/${encodeURIComponent(o.link_vendas || '')}?w=1280&h=800`,
+    '', '## Anúncios (do que tem mais anúncios ativos pro que tem menos)', '',
+    ...rows.slice(0, 8).map((r, i) => [
+      `### ${i + 1}. ${r.page_nome || ''} — ${r.qtd_ads || 0} anúncios com esse criativo · ${r.tipo_midia || ''} · desde ${dataBR(r.inicio)}`,
+      `- Link: https://www.facebook.com/ads/library/?id=${r.ad_archive_id}`,
+      r.titulo ? `- Título: ${corta(r.titulo, 120)}` : '', r.cta ? `- Botão: ${r.cta}` : '',
+      r.texto ? `- Texto:\n\n> ${corta(r.texto, 700).replace(/\n+/g, '\n> ')}` : '', ''
+    ].filter(Boolean).join('\n')),
+    '', '(Os links de vídeo/imagem do Facebook expiram: abra pela Biblioteca se precisar.)'
+  ].filter(x => x !== '').join('\n');
+  const pacote = { link: o.link_vendas || bib, nome: dom || o.page_nome || '', md };
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(pacote)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  window.open('http://localhost:4317/#garimpo=' + b64, 'central_agentes');
+  toast('Abrindo na Central de Agentes 🤖 (ela precisa estar ligada no PC)');
 }
 async function pararAcomp(ids) {
   await sb.from('mina_anuncios').update({ status: 'nova', acompanhar: false, acompanhar_status: 'encerrado' }).in('id', String(ids).split(',').map(Number));
