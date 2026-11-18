@@ -300,6 +300,12 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
       <h1>Acompanhando</h1>
       <p class="sub">Suas ofertas salvas, vigiadas dia a dia. Checagem automática todo dia às 13h.</p>
       <div class="filtros">
+        <select id="a-ordem">
+          <option value="ads">💰 Mais anúncios ativos</option>
+          <option value="recente">🆕 Começou a rodar por último</option>
+          <option value="antigo">⏳ Rodando há mais tempo</option>
+          <option value="dia1">1º dia rodando (subiu hoje/ontem)</option>
+        </select>
         <button class="btn" id="b-checar">📡 Checar agora</button>
         <span class="sub" style="margin:0" id="acomp-status"></span>
       </div>
@@ -855,21 +861,28 @@ async function listarAcomp() {
     if ((prio[o.acompanhar_status] ?? 0) > (prio[atual.acompanhar_status] ?? 0)) atual.acompanhar_status = o.acompanhar_status;
     atual.acompanhar = atual.acompanhar || o.acompanhar;
   }
-  const cols = { d1: [], d2: [], ok: [], morta: [] };
-  for (const o of paginas.values()) {
+  const cols = { todos: [], morta: [] };
+  const ord = $('#a-ordem').value;
+  const lista = [...paginas.values()];
+  const adsDe = o => { const d = juntarHist(o.ids, porId, pagDe).filter(x => x.pagina_ads != null); return d.length ? d[d.length - 1].pagina_ads : (o.qtd_ads || 0); };
+  lista.forEach(o => { o._ads = adsDe(o); o._ini = o.inicio || '9999'; });
+  if (ord === 'ads') lista.sort((a, b) => b._ads - a._ads);
+  if (ord === 'recente' || ord === 'dia1') lista.sort((a, b) => b._ini.localeCompare(a._ini) || b._ads - a._ads);
+  if (ord === 'antigo') lista.sort((a, b) => a._ini.localeCompare(b._ini) || b._ads - a._ads);
+  const corte = hojeBR(-1);
+  for (const o of lista) {
+    if (ord === 'dia1' && !(o.inicio && o.inicio >= corte)) continue;
     o.n_paginas = new Set(o.ids.map(i => pagDe[i]).filter(Boolean)).size;
     const h = juntarHist(o.ids, porId, pagDe), dias = h.filter(d => d.pagina_ads != null), ult = dias[dias.length - 1];
     const n = Math.max(1, dias.length); // coluna = dias que você está acompanhando
     const card = linhaAcomp(o, h);
     if (ult && !ult.pagina_ads) cols.morta.push(card);
-    else if (n >= 3) cols.ok.push(card);
-    else if (n === 2) cols.d2.push(card);
-    else cols.d1.push(card);
+    else cols.todos.push(card);
   }
   if (!paginas.size) { $('#lista-acomp').innerHTML = '<div class="vazio">Nenhuma oferta em acompanhamento. Salve ofertas que elas entram aqui sozinhas.</div>'; return; }
-  // cards lado a lado: primeiro as com mais dias acompanhando
-  const vivos = [...cols.ok, ...cols.d2, ...cols.d1];
-  $('#lista-acomp').innerHTML = `<div class="acomp-grid">${vivos.join('') || '<div class="vazio">Nenhuma oferta ativa em acompanhamento.</div>'}</div>${cols.morta.length ? `<details class="kb-mortas"><summary>💀 Não validaram (${cols.morta.length})</summary><div class="acomp-grid" style="margin-top:10px">${cols.morta.join('')}</div></details>` : ''}`;
+  // cards lado a lado, na ordem escolhida no filtro
+  const vivos = cols.todos;
+  $('#lista-acomp').innerHTML = `<div class="acomp-grid">${vivos.join('') || `<div class="vazio">${ord === 'dia1' ? 'Nenhuma oferta começou a rodar hoje ou ontem.' : 'Nenhuma oferta ativa em acompanhamento.'}</div>`}</div>${cols.morta.length ? `<details class="kb-mortas"><summary>💀 Não validaram (${cols.morta.length})</summary><div class="acomp-grid" style="margin-top:10px">${cols.morta.join('')}</div></details>` : ''}`;
 }
 /* ---------- detector de expert: selos ---------- */
 const FORMATOS = {
@@ -1022,6 +1035,7 @@ async function pararAcomp(ids) {
   await sb.from('mina_anuncios').update({ status: 'nova', acompanhar: false, acompanhar_status: 'encerrado' }).in('id', String(ids).split(',').map(Number));
   toast('Removida do Acompanhando e das Salvas'); listarAcomp(); contadores();
 }
+$('#a-ordem').onchange = () => listarAcomp();
 $('#b-checar').onclick = async () => {
   $('#b-checar').disabled = true; $('#acomp-status').textContent = 'Disparando...';
   try {
