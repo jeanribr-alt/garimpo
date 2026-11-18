@@ -1036,7 +1036,7 @@ async function alternarAcomp(id, b) {
 }
 // copia o link da oferta e abre o Save Web to Zip: é só colar (Ctrl+V) e clicar em Save
 async function baixarPagina(link) {
-  const aba = window.open('https://saveweb2zip.com/en', '_blank', 'noopener');
+  const aba = window.open('https://saveweb2zip.com/en', '_blank'); if (aba) aba.opener = null;
   try { await navigator.clipboard.writeText(link); toast('Link copiado ✓ · cole no campo (Ctrl+V) e clique em Save'); }
   catch (_) { prompt('Copie o link e cole no Save Web to Zip:', link); }
   if (!aba) toast('Libere pop-ups pro Garimpo abrir o Save Web to Zip');
