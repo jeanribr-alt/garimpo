@@ -268,6 +268,7 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
         <select id="f-midia"><option value="">Vídeo e imagem</option><option value="video">Só vídeo</option><option value="imagem">Só imagem</option></select>
         <select id="f-formato"><option value="">Todos os formatos</option><option value="expert_famoso">⭐ Expert famoso</option><option value="expert_real">🙋 Expert real</option><option value="expert_ia">🤖 Expert de IA</option><option value="sem_rosto">📝 Sem rosto</option><option value="arte">🎨 Arte / imagem</option></select>
         <select id="f-periodo">
+          <option value="ult" selected>🆕 Novas da última mineração</option>
           <option value="">Minerados: sempre</option>
           <option value="1">Hoje</option>
           <option value="7">Últimos 7 dias</option>
@@ -569,7 +570,12 @@ async function feed(reset) {
   if ($('#f-pais').value) q = q.eq('pais', $('#f-pais').value);
   if ($('#f-midia').value) q = q.eq('tipo_midia', $('#f-midia').value);
   if ($('#f-formato').value) q = q.eq('formato', $('#f-formato').value);
-  if ($('#f-periodo').value) q = q.gte('primeira_vez', new Date(Date.now() - $('#f-periodo').value * 864e5).toISOString());
+  if ($('#f-periodo').value === 'ult' && view !== 'salvas') {
+    // só ofertas que entraram no Garimpo na última mineração (as que já existiam ficam de fora)
+    const { data: ue } = await sb.from('mina_execucoes').select('iniciada_em').or('tipo.is.null,tipo.neq.acompanhamento').order('iniciada_em', { ascending: false }).limit(1);
+    const ini = ue?.[0]?.iniciada_em ? new Date(Date.parse(ue[0].iniciada_em) - 30 * 60e3).toISOString() : new Date(Date.now() - 864e5).toISOString();
+    q = q.gte('primeira_vez', ini);
+  } else if ($('#f-periodo').value && $('#f-periodo').value !== 'ult') q = q.gte('primeira_vez', new Date(Date.now() - $('#f-periodo').value * 864e5).toISOString());
   const ord = $('#f-ordem').value;
   if (ord === 'qtd') q = q.order(view === 'salvas' ? 'qtd_ads' : 'ads_oferta', { ascending: false });
   if (ord === 'criativos') q = view === 'salvas' ? q.order('qtd_ads', { ascending: false }) : q.order('n_criativos', { ascending: false }).order('ads_oferta', { ascending: false });
@@ -995,7 +1001,7 @@ async function progresso() {
   const box = $('#m-prog'), mini = $('#prog-mini');
   if (!r.rodando) {
     box.classList.add('hide'); mini.classList.add('hide');
-    if (_progTinha) { _progTinha = false; toast('⛏ Mineração concluída ✓'); execucoes(); contadores(); ultimaExec(); if (view === 'ofertas') feed(true); }
+    if (_progTinha) { _progTinha = false; toast('⛏ Mineração concluída ✓'); $('#f-periodo').value = 'ult'; execucoes(); contadores(); ultimaExec(); if (view === 'ofertas') feed(true); }
     return;
   }
   _progTinha = true;
