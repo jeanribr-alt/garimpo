@@ -999,7 +999,7 @@ function numerosAcomp(hoje, o) {
     <div><b>${hoje.pagina_ads}</b><span>anúncios ativos</span></div>
     <div><b>${dif}</b><span>criativos diferentes</span></div>
   </div>
-  <div class="ac-resumo"><span>${dupTxt}</span>${dias != null ? `<span>no ar há ${dias} dia${dias === 1 ? '' : 's'}</span>` : ''}</div>`;
+  <div class="ac-resumo"><span>${dupTxt}</span></div>`;
 }
 const dataBR = (d) => d ? d.slice(8,10) + '/' + d.slice(5,7) + '/' + d.slice(0,4) : '';
 function linhaAcomp(o, h) {
@@ -1012,7 +1012,7 @@ function linhaAcomp(o, h) {
   return `<div class="acomp" id="ac${o.id}">
     <div class="ac-thumb">${heroImg(o)}</div>
     <div class="ac-info">
-      <div class="ac-top"><span class="st st-dia">${diaAtual}º dia acompanhando</span>${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
+      <div class="ac-top">${o.inicio ? `<span class="st st-dia">${(() => { const d = Math.max(0, Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5)); return d === 0 ? 'Rodando desde hoje' : `Rodando há ${d} dia${d > 1 ? 's' : ''}`; })()}</span>` : ''}${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
       ${numerosAcomp(hoje, o)}
       <div class="veredito ${vereditoTxt(h)[1]}">${vereditoTxt(h)[0]}</div>
       ${relatorio(h, o.inicio).length ? `<details class="relat"><summary>Ver relatório dia a dia</summary><ol>${relatorio(h, o.inicio).map(r => `<li class="${r.cls}"><span>${r.n}º dia</span><p>${r.txt}</p></li>`).join('')}</ol></details>` : ''}
