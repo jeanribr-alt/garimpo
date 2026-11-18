@@ -181,6 +181,9 @@ h1{font-weight:800;letter-spacing:-1.4px;font-size:30px}.toast{border-radius:2px
 .acomp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-items:start}
 .acomp-grid .acomp{flex-direction:column;gap:10px}
 .acomp-grid .ac-thumb{width:100%;min-width:0;height:170px;background:#f3f1ea}
+.ac-nums{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 4px}
+.ac-nums div{border:1px solid var(--line);padding:8px 10px;display:flex;flex-direction:column}
+.ac-nums b{font-size:24px;line-height:1.1}.ac-nums span{font-size:12px;color:var(--mut)}
 .acomp-grid .ac-thumb img.hero{object-fit:cover;object-position:top}
 .acomp-grid .campeao{flex-direction:row}
 .acomp-grid .cp-txt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -952,6 +955,7 @@ function juntarHist(ids, porId, pagDe) {
     d.novos_24h += r.novos_24h || 0; d.criativos += r.criativos || 0;
     d.criativos_ids = d.criativos_ids.concat(r.criativos_ids || []);
     d._det = d._det.concat(r.criativos_det || []);
+    d.criativos_qtd = Object.assign({}, d.criativos_qtd || {}, r.criativos_qtd || {});
     d.criativo_ads = Math.max(d.criativo_ads || 0, r.criativo_ads || 0);
   }
   return Object.keys(dias).sort().map(k => { const d = dias[k]; d.criativos_det = d._det.sort((a, b) => (b.ads || 0) - (a.ads || 0)); return d; });
@@ -970,6 +974,20 @@ function heroImg(o) {
   const shot = 'https://s0.wp.com/mshots/v1/' + encodeURIComponent(o.link_vendas) + '?w=1280&h=800';
   return `<a href="${esc(o.link_vendas)}" target="_blank" rel="noopener"><img class="hero" loading="lazy" src="${shot}" onload="heroPronto(this)" onerror="${fb}"></a>`;
 }
+// anúncios ativos, criativos diferentes e quantos estão duplicados (mesmo criativo em vários anúncios)
+function numerosAcomp(hoje, o) {
+  if (hoje.pagina_ads == null) return '<div class="ac-resumo"><span>Aguardando a 1ª checagem</span></div>';
+  const qtd = Object.values(hoje.criativos_qtd || {}).map(Number);
+  const dif = qtd.length || hoje.criativos || 0;
+  const dup = qtd.filter(n => n > 1);
+  const dupTxt = dup.length ? `${dup.length} duplicado${dup.length > 1 ? 's' : ''} (${dup.sort((a, b) => b - a).slice(0, 3).map(n => n + 'x').join(', ')}${dup.length > 3 ? '…' : ''})` : 'nenhum duplicado';
+  const dias = o.inicio ? Math.max(0, Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5)) : null;
+  return `<div class="ac-nums">
+    <div><b>${hoje.pagina_ads}</b><span>anúncios ativos</span></div>
+    <div><b>${dif}</b><span>criativos diferentes</span></div>
+  </div>
+  <div class="ac-resumo"><span>${dupTxt}</span>${dias != null ? `<span>no ar há ${dias} dia${dias === 1 ? '' : 's'}</span>` : ''}</div>`;
+}
 const dataBR = (d) => d ? d.slice(8,10) + '/' + d.slice(5,7) + '/' + d.slice(0,4) : '';
 function linhaAcomp(o, h) {
   const st = ST[o.acompanhar_status] || ST.nova;
@@ -981,11 +999,9 @@ function linhaAcomp(o, h) {
   return `<div class="acomp" id="ac${o.id}">
     <div class="ac-thumb">${heroImg(o)}</div>
     <div class="ac-info">
-      <div class="ac-top"><b>${esc(o.page_nome || 'Oferta')}${o.n_paginas > 1 ? ` <span style="font-weight:400;font-size:12px">+ ${o.n_paginas - 1} página${o.n_paginas > 2 ? 's' : ''} (${o.n_paginas} no total)</span>` : ''}</b>${diaAtual ? `<span class="st st-dia">${diaAtual}º dia acompanhando</span>` : ''}${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
-      ${o.inicio ? `<div class="ac-resumo"><span>📅 Rodando desde <b>${dataBR(o.inicio)}</b> (${Math.max(0, Math.round((Date.parse(hojeBR()) - Date.parse(o.inicio)) / 864e5))} dias no ar)</span></div>` : ''}
-      <div class="ac-resumo">${hoje.pagina_ads != null ? `<span><b>${hoje.pagina_ads}</b> ativos ${o.n_paginas > 1 ? `nas ${o.n_paginas} páginas` : 'na página'}</span><span><b>${hoje.novos_24h ?? 0}</b> novos subidos hoje</span>` : '<span>Aguardando a 1ª checagem</span>'}</div>
-            <div class="veredito ${vereditoTxt(h)[1]}">${vereditoTxt(h)[0]}</div>
-      ${blocoCampeao(h)}
+      <div class="ac-top"><span class="st st-dia">${diaAtual}º dia acompanhando</span>${o.nicho ? `<span class="chip">${esc(o.nicho)}</span>` : ''}</div>
+      ${numerosAcomp(hoje, o)}
+      <div class="veredito ${vereditoTxt(h)[1]}">${vereditoTxt(h)[0]}</div>
       ${relatorio(h, o.inicio).length ? `<details class="relat"><summary>Ver relatório dia a dia</summary><ol>${relatorio(h, o.inicio).map(r => `<li class="${r.cls}"><span>${r.n}º dia</span><p>${r.txt}</p></li>`).join('')}</ol></details>` : ''}
       <div class="ac-links">
         <a href="https://www.facebook.com/ads/library/?id=${esc(o.ad_archive_id)}" target="_blank" rel="noopener">Ver anúncio</a>
